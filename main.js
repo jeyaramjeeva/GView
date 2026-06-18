@@ -1,5 +1,8 @@
 const path = require("path");
 const { app, BrowserWindow } = require("electron");
+const LOGO_PATH = "C:/Users/Jjeyara/Downloads/Logo.png";
+
+app.setName("GView");
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -9,6 +12,7 @@ function createWindow() {
     minHeight: 700,
     backgroundColor: "#0b111d",
     autoHideMenuBar: true,
+    icon: LOGO_PATH,
     webPreferences: {
       contextIsolation: true,
       sandbox: true,

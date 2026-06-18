@@ -1,7 +1,7 @@
 {
-  "name": "ply_viewer",
+  "name": "gview",
   "version": "1.0.0",
-  "description": "Desktop PLY Viewer app",
+  "description": "GView desktop viewer app",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -20,8 +20,8 @@
     "electron-builder": "^26.15.3"
   },
   "build": {
-    "appId": "com.jjeyara.plyviewer",
-    "productName": "PLY Viewer Studio",
+    "appId": "com.jjeyara.gview",
+    "productName": "GView",
     "files": [
       "main.js",
       "PlyViewer.html"
@@ -30,6 +30,7 @@
       "buildResources": "build"
     },
     "win": {
+      "icon": "C:/Users/Jjeyara/Downloads/Logo.png",
       "target": [
         "nsis"
       ]

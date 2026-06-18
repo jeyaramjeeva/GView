@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Babylon.js 9.0 GSplat Viewer</title>
+    <title>GView</title>
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
     <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
     <script src="https://cesium.com/downloads/cesiumjs/releases/1.123/Build/Cesium/Cesium.js"></script>
@@ -67,13 +67,23 @@
         #uiHeader {
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: flex-start;
             gap: 10px;
             margin-bottom: 10px;
         }
+        #appLogo {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+            border-radius: 8px;
+            border: 1px solid rgba(158, 194, 255, 0.35);
+            background: rgba(9, 14, 24, 0.35);
+            padding: 3px;
+            flex-shrink: 0;
+        }
 
         #uiTitle {
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 700;
             letter-spacing: 0.02em;
             color: #f3f7ff;
@@ -337,7 +347,8 @@
     <button id="toggleUiBtn">Hide Controls</button>
     <div id="ui">
         <div id="uiHeader">
-            <div id="uiTitle">PLY Viewer Studio</div>
+            <img id="appLogo" src="file:///C:/Users/Jjeyara/Downloads/Logo.png" alt="GView Logo">
+            <div id="uiTitle">GView</div>
         </div>
         <label>Viewer Mode</label>
         <select id="viewerModeSelect">
@@ -736,7 +747,7 @@
 
         function updateProjectTitleAndStatusSuffix() {
             const dirty = isProjectDirty ? "*" : "";
-            document.title = dirty + " Babylon.js 9.0 GSplat Viewer - " + currentProjectName;
+            document.title = dirty + " GView - " + currentProjectName;
         }
 
         function markDirty(value = true) {

@@ -1,0 +1,2103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Babylon.js 9.0 GSplat Viewer</title>
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.123/Build/Cesium/Cesium.js"></script>
+    <link href="https://cesium.com/downloads/cesiumjs/releases/1.123/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <style>
+        :root {
+            color-scheme: dark;
+            --panel-bg: rgba(13, 18, 28, 0.82);
+            --panel-border: rgba(156, 188, 255, 0.24);
+            --section-bg: rgba(16, 23, 36, 0.78);
+            --section-border: rgba(148, 184, 255, 0.18);
+            --text-main: #e8eefc;
+            --text-muted: #9fb0d4;
+            --accent: #4f8cff;
+            --accent-2: #61c7ff;
+            --danger: #df5565;
+            --input-bg: #121b2c;
+            --input-border: #2f415f;
+            --shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: "Inter", "Segoe UI", Roboto, Arial, sans-serif;
+            color: var(--text-main);
+            background: radial-gradient(80% 120% at 70% 10%, #17233a 0%, #080b11 55%, #03050a 100%);
+        }
+
+        #renderCanvas { width: 100%; height: 100%; touch-action: none; background: #050505; }
+        #cesiumContainer {
+            position: absolute;
+            inset: 0;
+            display: none;
+            background: #050505;
+        }
+
+        #ui {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            z-index: 10;
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 14px;
+            border-radius: 14px;
+            color: var(--text-main);
+            border: 1px solid var(--panel-border);
+            box-shadow: var(--shadow);
+            pointer-events: auto;
+            width: 368px;
+            max-height: calc(100% - 32px);
+            overflow: auto;
+        }
+        #ui.hiddenPanel { display: none; }
+
+        #uiHeader {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        #uiTitle {
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            color: #f3f7ff;
+        }
+
+        #uiBadge {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #d8e7ff;
+            background: linear-gradient(135deg, rgba(79, 140, 255, 0.45), rgba(97, 199, 255, 0.28));
+            border: 1px solid rgba(160, 203, 255, 0.5);
+            border-radius: 999px;
+            padding: 4px 8px;
+        }
+
+        .row { display: flex; gap: 8px; margin-bottom: 8px; }
+        .row > * { flex: 1; }
+        #tabsBar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        .tabBtn {
+            padding: 7px 6px;
+            font-size: 10px;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            border-radius: 8px;
+            border: 1px solid rgba(124, 154, 211, 0.35);
+            background: linear-gradient(135deg, #27354f, #314463);
+            color: #dfebff;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .tabBtn.active {
+            border-color: rgba(149, 188, 255, 0.42);
+            background: linear-gradient(135deg, #356fde, #4f8cff);
+            color: #f4f8ff;
+        }
+        .tabSection { display: none; }
+        .tabSection.active { display: block; }
+
+        .section {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid var(--section-border);
+            background: linear-gradient(180deg, rgba(24, 35, 55, 0.65), var(--section-bg));
+        }
+
+        .sectionTitle {
+            font-size: 11px;
+            color: #b7ceff;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+        }
+
+        button {
+            cursor: pointer;
+            padding: 8px 10px;
+            border: 1px solid rgba(149, 188, 255, 0.24);
+            background: linear-gradient(135deg, #356fde, #4f8cff);
+            color: #f4f8ff;
+            border-radius: 8px;
+            font-weight: 600;
+            width: 100%;
+            transition: transform 0.12s ease, filter 0.12s ease, border-color 0.12s ease;
+        }
+        button:hover { filter: brightness(1.08); }
+        button:active { transform: translateY(1px); }
+        button.secondary {
+            background: linear-gradient(135deg, #27354f, #314463);
+            border-color: rgba(124, 154, 211, 0.35);
+            color: #dfebff;
+        }
+        button.warning {
+            background: linear-gradient(135deg, #c44655, var(--danger));
+            border-color: rgba(255, 170, 184, 0.35);
+        }
+
+        #helpPanel {
+            position: absolute;
+            right: 18px;
+            bottom: 18px;
+            z-index: 10;
+            max-width: 460px;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #e8f0ff;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: rgba(10, 16, 28, 0.38);
+            border: 1px solid rgba(158, 194, 255, 0.28);
+            backdrop-filter: blur(7px);
+            -webkit-backdrop-filter: blur(7px);
+            pointer-events: none;
+        }
+        #helpPanel b { color: #ffffff; font-weight: 700; }
+
+        .small { font-size: 11px; color: #c9d7f3; }
+        input[type="range"] { width: 100%; accent-color: #6db2ff; }
+        label { display: block; font-size: 11px; color: #d5e2ff; margin: 6px 0 4px 0; }
+
+        select, input[type="color"], input[type="text"], input[type="number"] {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 7px 8px;
+            border-radius: 8px;
+            border: 1px solid var(--input-border);
+            background: var(--input-bg);
+            color: #f0f5ff;
+            outline: none;
+        }
+        select:focus, input[type="color"]:focus, input[type="text"]:focus, input[type="number"]:focus {
+            border-color: #7db8ff;
+            box-shadow: 0 0 0 2px rgba(86, 151, 255, 0.2);
+        }
+
+        #modelList {
+            width: 100%;
+            min-height: 80px;
+            background: #0f1726;
+            border: 1px solid #304667;
+            border-radius: 8px;
+            color: #edf4ff;
+        }
+        #modelRows {
+            margin-top: 6px;
+            border: 1px solid #324c72;
+            border-radius: 8px;
+            background: #0a101a;
+            max-height: 132px;
+            overflow: auto;
+        }
+        .modelRow { display: flex; align-items: center; gap: 6px; padding: 5px 6px; border-bottom: 1px solid #1d2d46; }
+        .modelRow:last-child { border-bottom: none; }
+        .modelRow.dragging { opacity: 0.5; }
+        .modelEye, .modelLock { width: 34px; padding: 5px 0; font-size: 12px; }
+        .modelNameBtn { flex: 1; text-align: left; background: #16243a; font-size: 11px; padding: 7px; }
+        .modelRow.active .modelNameBtn { background: #23406a; }
+
+        #statusText {
+            font-size: 12px;
+            color: #d8e6ff;
+            margin-top: 6px;
+            min-height: 16px;
+            padding: 7px 8px;
+            border-radius: 8px;
+            background: rgba(10, 16, 27, 0.58);
+            border: 1px solid rgba(113, 146, 204, 0.25);
+        }
+        #fpsGraph {
+            width: 100%;
+            height: 38px;
+            background: #0c1422;
+            border: 1px solid #294062;
+            border-radius: 8px;
+            display: block;
+        }
+
+        .numGrid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+        .miniLabel { font-size: 10px; color: #a8c5ff; margin: 6px 0 3px 0; letter-spacing: 0.04em; text-transform: uppercase; }
+
+        #logPanel {
+            margin-top: 8px;
+            max-height: 114px;
+            overflow: auto;
+            background: #0b111d;
+            border: 1px solid #2b3f61;
+            border-radius: 8px;
+            font-size: 11px;
+            line-height: 1.35;
+            padding: 8px;
+            color: #c9dbff;
+            white-space: pre-wrap;
+        }
+
+        #splatInfoPanel {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            z-index: 10;
+            background: rgba(10, 15, 24, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 10px 14px;
+            border-radius: 12px;
+            color: #e8eefe;
+            border: 1px solid rgba(142, 178, 242, 0.28);
+            font-size: 13px;
+            pointer-events: none;
+            text-align: right;
+            min-width: 128px;
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+        }
+        #splatInfoPanel .label { font-size: 10px; color: #9fb1d8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+        #splatInfoPanel .value { font-variant-numeric: tabular-nums; font-weight: 700; color: #fff; }
+        #splatInfoPanel .stat { margin-top: 10px; }
+        #splatInfoPanel .stat:first-child { margin-top: 0; }
+
+        #dropOverlay {
+            position: absolute;
+            inset: 0;
+            z-index: 12;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(9, 14, 24, 0.55);
+            color: #e9f2ff;
+            font-size: 24px;
+            border: 3px dashed #6eb8ff;
+            letter-spacing: 0.04em;
+            pointer-events: none;
+        }
+        #loadingOverlay {
+            position: absolute;
+            inset: 0;
+            z-index: 11;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 12px;
+            background: rgba(6, 10, 17, 0.55);
+            color: #fff;
+            pointer-events: none;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            border-top: 4px solid #8ec9ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        #toggleUiBtn {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            z-index: 11;
+            width: auto;
+            padding: 7px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(149, 188, 255, 0.34);
+            background: rgba(13, 18, 28, 0.86);
+            color: #e8eefc;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            display: block;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <button id="toggleUiBtn">Hide Controls</button>
+    <div id="ui">
+        <div id="uiHeader">
+            <div id="uiTitle">PLY Viewer Studio</div>
+        </div>
+        <label>Viewer Mode</label>
+        <select id="viewerModeSelect">
+            <option value="ply" selected>PLY / Gaussian Splat</option>
+            <option value="3dtiles">3D Tiles</option>
+        </select>
+        <div class="row">
+            <button id="importBtn">Import</button>
+            <input id="importSourceInput" type="text" placeholder=".ply path/URL or tileset.json URL">
+            <button id="clearAllBtn" class="warning">Clear</button>
+        </div>
+        <div class="section" id="tilesLoaderSection">
+            <div class="sectionTitle">3D Tiles Loader</div>
+            <label>Tileset URL (`tileset.json`)</label>
+            <input id="tilesetUrlInput" type="text" placeholder="Auto-filled by Import when tileset is detected">
+            <div class="row">
+                <button id="loadTilesBtn" class="secondary">Load URL</button>
+                <button id="clearTilesBtn" class="warning">Clear Tiles</button>
+            </div>
+        </div>
+        <div class="row">
+            <button id="saveProjectBtn" class="secondary">Save Project</button>
+            <button id="loadProjectBtn" class="secondary">Load Project</button>
+        </div>
+        <input type="file" id="fileInput" accept=".ply" style="display:none;" multiple>
+        <input type="file" id="projectInput" accept=".pvproj,.json" style="display:none;">
+        <div id="statusText" class="small">Drop .PLY files or click Load.</div>
+        <div id="logPanel"></div>
+
+        <div id="tabsBar">
+            <button class="tabBtn active" data-tab="models">Models</button>
+            <button class="tabBtn" data-tab="camera">Camera</button>
+            <button class="tabBtn" data-tab="transform">Transform</button>
+            <button class="tabBtn" data-tab="scene">Scene</button>
+        </div>
+
+        <div class="tabSection active" data-tab-section="models">
+        <div class="section">
+            <div class="sectionTitle">Models</div>
+            <select id="modelList" size="5" multiple></select>
+            <div id="modelRows"></div>
+            <div class="row">
+                <button id="removeModelBtn" class="secondary">Remove Selected</button>
+                <button id="focusModelBtn" class="secondary">Focus</button>
+            </div>
+            <div class="row">
+                <button id="hideModelBtn" class="secondary">Hide Selected</button>
+                <button id="showAllBtn" class="secondary">Show All</button>
+            </div>
+            <div class="row">
+                <button id="isolateModelBtn" class="secondary">Isolate Selected</button>
+                <button id="clearIsolationBtn" class="secondary">Clear Isolation</button>
+            </div>
+            <label>Layer Name</label>
+            <input id="layerNameInput" type="text" value="Default">
+            <div class="row">
+                <button id="assignLayerBtn" class="secondary">Assign Layer</button>
+                <button id="filterLayerBtn" class="secondary">Filter Layer</button>
+            </div>
+            <label>Layer Filter</label>
+            <select id="layerFilterSelect">
+                <option value="__all__">All Layers</option>
+            </select>
+        </div>
+        </div>
+
+        <div class="tabSection" data-tab-section="camera">
+        <div class="section">
+            <div class="sectionTitle">Camera</div>
+            <div class="row">
+                <button id="fitBtn" class="secondary">Fit Camera</button>
+                <button id="resetCamBtn" class="secondary">Reset Camera</button>
+            </div>
+            <div class="row">
+                <button id="saveViewBtn" class="secondary">Save View</button>
+                <button id="restoreViewBtn" class="secondary">Restore View</button>
+            </div>
+            <label>Move Speed <span id="moveSpeedLabel">10.0</span></label>
+            <input id="moveSpeedInput" type="range" min="1" max="40" step="0.5" value="10">
+            <label>Rotate Speed <span id="rotSpeedLabel">1.40</span></label>
+            <input id="rotSpeedInput" type="range" min="0.2" max="5" step="0.05" value="1.4">
+            <label>Camera Sensitivity <span id="camSensLabel">3000</span></label>
+            <input id="camSensInput" type="range" min="300" max="6000" step="100" value="3000">
+            <label>Zoom Speed <span id="zoomSpeedLabel">20</span></label>
+            <input id="zoomSpeedInput" type="range" min="1" max="20" step="1" value="20">
+            <label>Drag Sensitivity <span id="dragSensLabel">0.35</span></label>
+            <input id="dragSensInput" type="range" min="0.02" max="1.00" step="0.01" value="0.35">
+            <div class="row">
+                <button id="undoBtn" class="secondary">Undo (0)</button>
+                <button id="redoBtn" class="secondary">Redo (0)</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="sectionTitle">Orientation</div>
+            <div class="row">
+                <button id="viewFrontBtn" class="secondary">Front</button>
+                <button id="viewBackBtn" class="secondary">Back</button>
+                <button id="viewLeftBtn" class="secondary">Left</button>
+            </div>
+            <div class="row">
+                <button id="viewRightBtn" class="secondary">Right</button>
+                <button id="viewTopBtn" class="secondary">Top</button>
+                <button id="viewBottomBtn" class="secondary">Bottom</button>
+            </div>
+        </div>
+        </div>
+
+        <div class="tabSection" data-tab-section="transform">
+        <div class="section">
+            <div class="sectionTitle">Transform</div>
+            <label>Mode</label>
+            <select id="transformModeSelect">
+                <option value="rotate">Rotate (Q/E, R/F, T/G)</option>
+                <option value="translate">Translate (J/L, U/O, I/K)</option>
+                <option value="scale">Scale (+/-)</option>
+            </select>
+            <div class="row">
+                <button id="resetTransformBtn" class="secondary">Reset Transform</button>
+                <button id="snapshotBtn" class="secondary">Save PNG</button>
+            </div>
+            <div class="miniLabel">Position (X Y Z)</div>
+            <div class="numGrid">
+                <input id="posXInput" type="number" step="0.01" value="0">
+                <input id="posYInput" type="number" step="0.01" value="0">
+                <input id="posZInput" type="number" step="0.01" value="0">
+            </div>
+            <div class="miniLabel">Rotation Degrees (X Y Z)</div>
+            <div class="numGrid">
+                <input id="rotXInput" type="number" step="0.1" value="0">
+                <input id="rotYInput" type="number" step="0.1" value="0">
+                <input id="rotZInput" type="number" step="0.1" value="0">
+            </div>
+            <div class="miniLabel">Scale (X Y Z)</div>
+            <div class="numGrid">
+                <input id="sclXInput" type="number" step="0.01" value="1">
+                <input id="sclYInput" type="number" step="0.01" value="1">
+                <input id="sclZInput" type="number" step="0.01" value="1">
+            </div>
+            <div class="row">
+                <button id="applyNumericTransformBtn" class="secondary">Apply Numeric</button>
+                <button id="readNumericTransformBtn" class="secondary">Read Current</button>
+            </div>
+            <div class="row">
+                <button id="resetPosBtn" class="secondary">Reset Pos</button>
+                <button id="resetRotBtn" class="secondary">Reset Rot</button>
+                <button id="resetScaleBtn" class="secondary">Reset Scale</button>
+            </div>
+        </div>
+        </div>
+
+        <div class="tabSection" data-tab-section="scene">
+        <div class="section">
+            <div class="sectionTitle">Scene & Performance</div>
+            <label>Background</label>
+            <input id="bgColorInput" type="color" value="#000000">
+            <div class="row">
+                <button id="toggleGridBtn" class="secondary">Grid Off</button>
+                <button id="toggleAxesBtn" class="secondary">Axes Off</button>
+            </div>
+            <label>Quality Preset</label>
+            <select id="qualitySelect">
+                <option value="high" selected>High</option>
+                <option value="balanced">Balanced</option>
+                <option value="performance">Performance</option>
+            </select>
+            <canvas id="fpsGraph" width="280" height="38"></canvas>
+        </div>
+
+        </div>
+    </div>
+
+    <div id="splatInfoPanel">
+        <div class="stat" aria-live="polite">
+            <div class="label">Splats loaded</div>
+            <div class="value" id="splatCountValue">0</div>
+        </div>
+        <div class="stat">
+            <div class="label">FPS</div>
+            <div class="value" id="fpsValue">0</div>
+        </div>
+    </div>
+
+    <div id="dropOverlay">Drop .PLY files to load</div>
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <div id="loadingText">Loading...</div>
+    </div>
+    <div id="helpPanel">
+        <b>Double Click</b> moves orbit pivot.<br>
+        <b>Right Drag</b> pans view, <b>Shift + Right Drag</b> moves active model.<br>
+        <b>WASD</b> pan pivot, <b>Q/E R/F T/G</b> rotate (if mode=Rotate).<br>
+        <b>J/L U/O I/K</b> translate (if mode=Translate), <b>+/-</b> scale.
+    </div>
+    <div id="cesiumContainer"></div>
+    <canvas id="renderCanvas" tabindex="0"></canvas>
+
+    <script>
+        const canvas = document.getElementById("renderCanvas");
+        const cesiumContainer = document.getElementById("cesiumContainer");
+        const ui = document.getElementById("ui");
+        const engine = new BABYLON.Engine(canvas, true);
+        const scene = new BABYLON.Scene(engine);
+        scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
+
+        // Camera setup with high angular sensibility for control.
+        const camera = new BABYLON.ArcRotateCamera("camera", Math.PI / 2, Math.PI / 2, 10, BABYLON.Vector3.Zero(), scene);
+        camera.angularSensibilityX = 3000;
+        camera.angularSensibilityY = 3000;
+        camera.wheelPrecision = 10;
+        camera.panningSensibility = 1000;
+        camera.attachControl(canvas, true);
+        if (camera.inputs?.attached?.pointers) {
+            // Keep camera rotation on left/middle only; handle right-drag ourselves.
+            camera.inputs.attached.pointers.buttons = [0, 1];
+            camera.inputs.attached.pointers.panningMouseButton = -1;
+        }
+
+        let currentSplatMesh = null;
+        let targetGlide = null;
+        let savedView = null;
+        let viewerMode = "ply";
+        let cesiumViewer = null;
+        let currentTileset = null;
+        let loadingDepth = 0;
+        let currentProjectName = "Untitled";
+        let isProjectDirty = false;
+
+        const loadedModels = [];
+        let modelCounter = 0;
+        let draggedModelId = null;
+        let activeLayerFilter = "__all__";
+
+        const history = [];
+        const redoHistory = [];
+        const HISTORY_LIMIT = 80;
+        let isApplyingHistory = false;
+        let transformActionActive = false;
+        let rightDragState = null;
+        const defaultCamera = {
+            alpha: Math.PI / 2,
+            beta: Math.PI / 2,
+            radius: 10,
+            target: BABYLON.Vector3.Zero(),
+        };
+
+        let moveSpeed = 10;
+        let rotSpeed = 1.4;
+        let dragSensitivity = 0.15;
+        let showGrid = false;
+        let showAxes = false;
+        const fpsSamples = [];
+        const FPS_HISTORY = 70;
+
+        const splatCountValueEl = document.getElementById("splatCountValue");
+        const fpsValueEl = document.getElementById("fpsValue");
+        const splatInfoPanel = document.getElementById("splatInfoPanel");
+        const statusTextEl = document.getElementById("statusText");
+        const logPanelEl = document.getElementById("logPanel");
+        const loadingOverlayEl = document.getElementById("loadingOverlay");
+        const loadingTextEl = document.getElementById("loadingText");
+        const dropOverlayEl = document.getElementById("dropOverlay");
+        const modelListEl = document.getElementById("modelList");
+        const modelRowsEl = document.getElementById("modelRows");
+        const layerFilterSelectEl = document.getElementById("layerFilterSelect");
+        const layerNameInputEl = document.getElementById("layerNameInput");
+        const transformModeSelect = document.getElementById("transformModeSelect");
+        const fpsGraphEl = document.getElementById("fpsGraph");
+
+        const moveSpeedInput = document.getElementById("moveSpeedInput");
+        const rotSpeedInput = document.getElementById("rotSpeedInput");
+        const camSensInput = document.getElementById("camSensInput");
+        const zoomSpeedInput = document.getElementById("zoomSpeedInput");
+        const dragSensInput = document.getElementById("dragSensInput");
+        const moveSpeedLabel = document.getElementById("moveSpeedLabel");
+        const rotSpeedLabel = document.getElementById("rotSpeedLabel");
+        const camSensLabel = document.getElementById("camSensLabel");
+        const zoomSpeedLabel = document.getElementById("zoomSpeedLabel");
+        const dragSensLabel = document.getElementById("dragSensLabel");
+
+        const bgColorInput = document.getElementById("bgColorInput");
+        const qualitySelect = document.getElementById("qualitySelect");
+        const undoBtn = document.getElementById("undoBtn");
+        const redoBtn = document.getElementById("redoBtn");
+        const toggleUiBtn = document.getElementById("toggleUiBtn");
+        const viewerModeSelectEl = document.getElementById("viewerModeSelect");
+        const importSourceInputEl = document.getElementById("importSourceInput");
+        const tilesLoaderSectionEl = document.getElementById("tilesLoaderSection");
+        const tilesetUrlInputEl = document.getElementById("tilesetUrlInput");
+        const posXInput = document.getElementById("posXInput");
+        const posYInput = document.getElementById("posYInput");
+        const posZInput = document.getElementById("posZInput");
+        const rotXInput = document.getElementById("rotXInput");
+        const rotYInput = document.getElementById("rotYInput");
+        const rotZInput = document.getElementById("rotZInput");
+        const sclXInput = document.getElementById("sclXInput");
+        const sclYInput = document.getElementById("sclYInput");
+        const sclZInput = document.getElementById("sclZInput");
+
+        function logMessage(message, level = "INFO") {
+            const stamp = new Date().toLocaleTimeString();
+            const line = "[" + stamp + "] [" + level + "] " + message;
+            const div = document.createElement("div");
+            div.textContent = line;
+            logPanelEl.prepend(div);
+            while (logPanelEl.childElementCount > 140) {
+                logPanelEl.removeChild(logPanelEl.lastElementChild);
+            }
+        }
+
+        function getLoadedSplatCount(mesh) {
+            if (!mesh) return 0;
+            const sc = mesh.splatCount;
+            if (typeof sc === "number" && sc >= 0) return sc;
+            if (typeof mesh.getTotalVertices === "function") {
+                const v = mesh.getTotalVertices();
+                if (typeof v === "number" && v > 0) return v;
+            }
+            return 0;
+        }
+
+        function updateSplatInfoPanel() {
+            const n = getLoadedSplatCount(currentSplatMesh);
+            splatCountValueEl.textContent = n.toLocaleString();
+        }
+
+        function setStatus(message) {
+            statusTextEl.textContent = message;
+            logMessage(message);
+        }
+
+        function ensureCesiumViewer() {
+            if (cesiumViewer) return cesiumViewer;
+            cesiumViewer = new Cesium.Viewer("cesiumContainer", {
+                timeline: false,
+                animation: false,
+                baseLayerPicker: false,
+                geocoder: false,
+                homeButton: true,
+                sceneModePicker: false,
+                navigationHelpButton: false,
+                infoBox: false,
+                selectionIndicator: false,
+                fullscreenButton: false,
+            });
+            return cesiumViewer;
+        }
+
+        async function load3DTilesFromUrl(url) {
+            if (!url) {
+                setStatus("Enter a 3D tileset URL first.");
+                return;
+            }
+            const viewer = ensureCesiumViewer();
+            showLoading("Loading 3D Tiles...");
+            try {
+                if (currentTileset) {
+                    viewer.scene.primitives.remove(currentTileset);
+                    currentTileset = null;
+                }
+                currentTileset = await Cesium.Cesium3DTileset.fromUrl(url);
+                viewer.scene.primitives.add(currentTileset);
+                await viewer.zoomTo(currentTileset);
+                setStatus("3D Tiles loaded.");
+            } catch (err) {
+                console.error(err);
+                setStatus("Failed to load 3D Tiles: " + (err.message || String(err)));
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function clear3DTiles() {
+            if (!cesiumViewer || !currentTileset) {
+                setStatus("No 3D Tiles loaded.");
+                return;
+            }
+            cesiumViewer.scene.primitives.remove(currentTileset);
+            currentTileset = null;
+            setStatus("3D Tiles cleared.");
+        }
+
+        function switchViewerMode(mode) {
+            viewerMode = mode;
+            const isPly = mode === "ply";
+            viewerModeSelectEl.value = mode;
+            canvas.style.display = isPly ? "block" : "none";
+            cesiumContainer.style.display = isPly ? "none" : "block";
+            splatInfoPanel.style.display = isPly ? "block" : "none";
+            dropOverlayEl.style.display = "none";
+            tilesLoaderSectionEl.style.display = isPly ? "none" : "block";
+            setStatus(isPly ? "PLY viewer mode." : "3D Tiles viewer mode.");
+            if (!isPly) ensureCesiumViewer();
+            engine.resize();
+        }
+
+        function updateProjectTitleAndStatusSuffix() {
+            const dirty = isProjectDirty ? "*" : "";
+            document.title = dirty + " Babylon.js 9.0 GSplat Viewer - " + currentProjectName;
+        }
+
+        function markDirty(value = true) {
+            isProjectDirty = value;
+            updateProjectTitleAndStatusSuffix();
+        }
+
+        function showLoading(message) {
+            loadingTextEl.textContent = message || "Loading...";
+            loadingDepth += 1;
+            loadingOverlayEl.style.display = "flex";
+        }
+
+        function hideLoading() {
+            loadingDepth = Math.max(loadingDepth - 1, 0);
+            if (loadingDepth > 0) return;
+            loadingOverlayEl.style.display = "none";
+        }
+
+        function hexToColor4(hex) {
+            const c = BABYLON.Color3.FromHexString(hex);
+            return new BABYLON.Color4(c.r, c.g, c.b, 1);
+        }
+
+        function refreshModelList() {
+            const activeId = currentSplatMesh ? (loadedModels.find((m) => m.mesh === currentSplatMesh)?.id ?? null) : null;
+            const prevSelected = new Set([...modelListEl.selectedOptions].map((o) => Number(o.value)));
+            modelListEl.innerHTML = "";
+            modelRowsEl.innerHTML = "";
+            for (const model of loadedModels) {
+                const option = document.createElement("option");
+                option.value = String(model.id);
+                option.textContent = model.name + " [" + (model.layer || "Default") + "]";
+                option.selected = prevSelected.has(model.id) || (prevSelected.size === 0 && activeId === model.id);
+                modelListEl.appendChild(option);
+
+                const row = document.createElement("div");
+                row.className = "modelRow" + (activeId === model.id ? " active" : "");
+                row.draggable = true;
+                row.dataset.modelId = String(model.id);
+                const eye = document.createElement("button");
+                eye.className = "secondary modelEye";
+                eye.textContent = model.mesh.isEnabled() ? "👁" : "🚫";
+                eye.title = model.mesh.isEnabled() ? "Hide model" : "Show model";
+                eye.addEventListener("click", () => {
+                    model.mesh.setEnabled(!model.mesh.isEnabled());
+                    if (model.mesh.isEnabled()) currentSplatMesh = model.mesh;
+                    else if (currentSplatMesh === model.mesh) {
+                        const next = loadedModels.find((m) => m.mesh.isEnabled());
+                        currentSplatMesh = next ? next.mesh : null;
+                    }
+                    updateSplatInfoPanel();
+                    refreshModelList();
+                    setStatus((model.mesh.isEnabled() ? "Shown: " : "Hidden: ") + model.name);
+                    pushHistory("Toggle visibility");
+                });
+                const lock = document.createElement("button");
+                lock.className = "secondary modelLock";
+                lock.textContent = model.locked ? "🔒" : "🔓";
+                lock.title = model.locked ? "Unlock model transform" : "Lock model transform";
+                lock.addEventListener("click", () => {
+                    model.locked = !model.locked;
+                    refreshModelList();
+                    setStatus((model.locked ? "Locked: " : "Unlocked: ") + model.name);
+                    pushHistory("Toggle lock");
+                });
+                const nameBtn = document.createElement("button");
+                nameBtn.className = "modelNameBtn";
+                nameBtn.textContent = model.name + " [" + (model.layer || "Default") + "]";
+                nameBtn.addEventListener("click", () => {
+                    setActiveModelById(model.id);
+                    modelListEl.value = String(model.id);
+                    layerNameInputEl.value = model.layer || "Default";
+                });
+                row.addEventListener("dragstart", () => {
+                    draggedModelId = model.id;
+                    row.classList.add("dragging");
+                });
+                row.addEventListener("dragend", () => {
+                    row.classList.remove("dragging");
+                    draggedModelId = null;
+                });
+                row.addEventListener("dragover", (e) => {
+                    e.preventDefault();
+                });
+                row.addEventListener("drop", (e) => {
+                    e.preventDefault();
+                    const targetId = Number(row.dataset.modelId);
+                    if (!Number.isFinite(targetId) || draggedModelId == null || draggedModelId === targetId) return;
+                    const fromIdx = loadedModels.findIndex((m) => m.id === draggedModelId);
+                    const toIdx = loadedModels.findIndex((m) => m.id === targetId);
+                    if (fromIdx < 0 || toIdx < 0) return;
+                    const [moved] = loadedModels.splice(fromIdx, 1);
+                    loadedModels.splice(toIdx, 0, moved);
+                    refreshModelList();
+                    setStatus("Model order updated.");
+                    pushHistory("Reorder models");
+                });
+                row.appendChild(eye);
+                row.appendChild(lock);
+                row.appendChild(nameBtn);
+                modelRowsEl.appendChild(row);
+            }
+        }
+
+        function getSelectedModelIds() {
+            const ids = [...modelListEl.selectedOptions].map((o) => Number(o.value)).filter((n) => Number.isFinite(n));
+            if (ids.length > 0) return ids;
+            const activeId = currentSplatMesh ? (loadedModels.find((m) => m.mesh === currentSplatMesh)?.id ?? null) : null;
+            return activeId != null ? [activeId] : [];
+        }
+
+        function refreshLayerFilterOptions() {
+            const layers = new Set(["__all__"]);
+            for (const m of loadedModels) layers.add(m.layer || "Default");
+            const existing = layerFilterSelectEl.value || "__all__";
+            layerFilterSelectEl.innerHTML = "";
+            for (const layer of layers) {
+                const opt = document.createElement("option");
+                opt.value = layer;
+                opt.textContent = layer === "__all__" ? "All Layers" : layer;
+                layerFilterSelectEl.appendChild(opt);
+            }
+            if ([...layers].includes(existing)) layerFilterSelectEl.value = existing;
+            else layerFilterSelectEl.value = "__all__";
+        }
+
+        function applyLayerFilter() {
+            const filter = layerFilterSelectEl.value || "__all__";
+            activeLayerFilter = filter;
+            for (const m of loadedModels) {
+                const pass = filter === "__all__" || (m.layer || "Default") === filter;
+                if (pass) m.mesh.setEnabled(true);
+                else m.mesh.setEnabled(false);
+            }
+            if (currentSplatMesh && !currentSplatMesh.isEnabled()) {
+                const firstVisible = loadedModels.find((m) => m.mesh.isEnabled());
+                currentSplatMesh = firstVisible ? firstVisible.mesh : null;
+                updateSplatInfoPanel();
+            }
+            setStatus(filter === "__all__" ? "Layer filter cleared." : ("Layer filter: " + filter));
+        }
+
+        function cloneVec(v) {
+            return { x: v.x, y: v.y, z: v.z };
+        }
+
+        function getCurrentStateSnapshot() {
+            return {
+                camera: {
+                    alpha: camera.alpha,
+                    beta: camera.beta,
+                    radius: camera.radius,
+                    target: cloneVec(camera.target),
+                },
+                ui: {
+                    moveSpeed,
+                    rotSpeed,
+                    cameraSensitivity: camera.angularSensibilityX,
+                    zoomSpeed: Number(zoomSpeedInput.value),
+                    dragSensitivity,
+                    transformMode: transformModeSelect.value,
+                    quality: qualitySelect.value,
+                    bgColor: bgColorInput.value,
+                    showGrid,
+                    showAxes,
+                    activeLayerFilter,
+                },
+                models: loadedModels.map((m) => ({
+                    id: m.id,
+                    meshName: m.mesh.name,
+                    layer: m.layer || "Default",
+                    locked: Boolean(m.locked),
+                    position: cloneVec(m.mesh.position),
+                    rotation: cloneVec(m.mesh.rotation),
+                    scaling: cloneVec(m.mesh.scaling),
+                    enabled: m.mesh.isEnabled(),
+                })),
+                activeModelId: currentSplatMesh ? loadedModels.find((m) => m.mesh === currentSplatMesh)?.id ?? null : null,
+            };
+        }
+
+        function applyStateSnapshot(snapshot) {
+            if (!snapshot) return;
+            isApplyingHistory = true;
+            try {
+                if (snapshot.camera) {
+                    camera.alpha = snapshot.camera.alpha;
+                    camera.beta = snapshot.camera.beta;
+                    camera.radius = snapshot.camera.radius;
+                    camera.setTarget(new BABYLON.Vector3(snapshot.camera.target.x, snapshot.camera.target.y, snapshot.camera.target.z), false, false, true);
+                }
+                if (snapshot.ui) {
+                    moveSpeed = snapshot.ui.moveSpeed;
+                    rotSpeed = snapshot.ui.rotSpeed;
+                    moveSpeedInput.value = String(moveSpeed);
+                    rotSpeedInput.value = String(rotSpeed);
+                    moveSpeedLabel.textContent = moveSpeed.toFixed(1);
+                    rotSpeedLabel.textContent = rotSpeed.toFixed(2);
+
+                    camSensInput.value = String(snapshot.ui.cameraSensitivity);
+                    camera.angularSensibilityX = snapshot.ui.cameraSensitivity;
+                    camera.angularSensibilityY = snapshot.ui.cameraSensitivity;
+                    camSensLabel.textContent = String(snapshot.ui.cameraSensitivity);
+
+                    zoomSpeedInput.value = String(snapshot.ui.zoomSpeed);
+                    camera.wheelPrecision = 21 - snapshot.ui.zoomSpeed;
+                    zoomSpeedLabel.textContent = String(snapshot.ui.zoomSpeed);
+                    dragSensitivity = Number(snapshot.ui.dragSensitivity ?? dragSensitivity);
+                    dragSensInput.value = String(dragSensitivity);
+                    dragSensLabel.textContent = dragSensitivity.toFixed(2);
+
+                    transformModeSelect.value = snapshot.ui.transformMode;
+                    qualitySelect.value = snapshot.ui.quality;
+                    applyQualityPreset(snapshot.ui.quality);
+                    bgColorInput.value = snapshot.ui.bgColor;
+                    scene.clearColor = hexToColor4(snapshot.ui.bgColor);
+                    setGridVisible(Boolean(snapshot.ui.showGrid));
+                    setAxesVisible(Boolean(snapshot.ui.showAxes));
+                    activeLayerFilter = snapshot.ui.activeLayerFilter || "__all__";
+                    layerFilterSelectEl.value = activeLayerFilter;
+                }
+                if (Array.isArray(snapshot.models)) {
+                    for (const sm of snapshot.models) {
+                        const hit = loadedModels.find((m) => m.id === sm.id);
+                        if (!hit) continue;
+                        hit.layer = sm.layer || "Default";
+                        hit.locked = Boolean(sm.locked);
+                        hit.mesh.position.copyFromFloats(sm.position.x, sm.position.y, sm.position.z);
+                        hit.mesh.rotation.copyFromFloats(sm.rotation.x, sm.rotation.y, sm.rotation.z);
+                        hit.mesh.scaling.copyFromFloats(sm.scaling.x, sm.scaling.y, sm.scaling.z);
+                        hit.mesh.setEnabled(Boolean(sm.enabled));
+                    }
+                    const order = snapshot.models.map((m) => m.id);
+                    loadedModels.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+                }
+                if (snapshot.activeModelId != null) setActiveModelById(snapshot.activeModelId);
+                refreshLayerFilterOptions();
+                refreshModelList();
+                updateSplatInfoPanel();
+            } finally {
+                isApplyingHistory = false;
+            }
+        }
+
+        function pushHistory(label, options = {}) {
+            if (isApplyingHistory) return;
+            history.push({ label, snapshot: getCurrentStateSnapshot() });
+            if (history.length > HISTORY_LIMIT) history.shift();
+            redoHistory.length = 0;
+            if (options.markDirty !== false) markDirty(true);
+            updateHistoryButtons();
+        }
+
+        function undoHistory() {
+            if (history.length < 2) {
+                setStatus("Nothing to undo.");
+                return;
+            }
+            const current = history.pop();
+            redoHistory.push(current);
+            const prev = history[history.length - 1];
+            applyStateSnapshot(prev.snapshot);
+            setStatus("Undo: " + prev.label);
+            updateHistoryButtons();
+        }
+
+        function redoAction() {
+            if (!redoHistory.length) {
+                setStatus("Nothing to redo.");
+                return;
+            }
+            const next = redoHistory.pop();
+            history.push(next);
+            applyStateSnapshot(next.snapshot);
+            setStatus("Redo: " + next.label);
+            updateHistoryButtons();
+        }
+
+        function updateHistoryButtons() {
+            undoBtn.textContent = "Undo (" + Math.max(0, history.length - 1) + ")";
+            redoBtn.textContent = "Redo (" + redoHistory.length + ")";
+        }
+
+        function setActiveTab(tabKey) {
+            const tabButtons = document.querySelectorAll(".tabBtn");
+            const tabSections = document.querySelectorAll(".tabSection");
+            tabButtons.forEach((btn) => {
+                const active = btn.dataset.tab === tabKey;
+                btn.classList.toggle("active", active);
+            });
+            tabSections.forEach((section) => {
+                const active = section.dataset.tabSection === tabKey;
+                section.classList.toggle("active", active);
+            });
+        }
+
+        function positionToggleButton() {
+            const hidden = ui.classList.contains("hiddenPanel");
+            if (hidden) {
+                toggleUiBtn.style.left = "16px";
+                return;
+            }
+            const gap = 10;
+            const leftPx = Math.round(ui.offsetLeft + ui.offsetWidth + gap);
+            toggleUiBtn.style.left = leftPx + "px";
+        }
+
+        function setActiveModelById(id) {
+            const target = loadedModels.find((m) => m.id === id);
+            if (!target) return;
+            const pass = activeLayerFilter === "__all__" || (target.layer || "Default") === activeLayerFilter;
+            if (!pass) {
+                setStatus("Selected model is hidden by active layer filter.");
+                return;
+            }
+            target.mesh.setEnabled(true);
+            currentSplatMesh = target.mesh;
+            updateSplatInfoPanel();
+            setStatus("Active model: " + target.name);
+            readCurrentTransformToInputs();
+        }
+
+        function removeModelById(id) {
+            const idx = loadedModels.findIndex((m) => m.id === id);
+            if (idx < 0) return;
+            const removed = loadedModels[idx];
+            removed.mesh.dispose();
+            loadedModels.splice(idx, 1);
+
+            if (loadedModels.length > 0) {
+                const next = loadedModels[Math.max(0, idx - 1)];
+                setActiveModelById(next.id);
+            } else {
+                currentSplatMesh = null;
+                updateSplatInfoPanel();
+                setStatus("No model loaded.");
+            }
+            refreshLayerFilterOptions();
+            refreshModelList();
+        }
+
+        function clearAllModels() {
+            for (const model of loadedModels) model.mesh.dispose();
+            loadedModels.length = 0;
+            currentSplatMesh = null;
+            activeLayerFilter = "__all__";
+            layerFilterSelectEl.value = "__all__";
+            refreshModelList();
+            refreshLayerFilterOptions();
+            updateSplatInfoPanel();
+            setStatus("Cleared all models.");
+        }
+
+        function captureProjectState() {
+            return {
+                version: 1,
+                savedAt: new Date().toISOString(),
+                app: {
+                    bgColor: bgColorInput.value,
+                    quality: qualitySelect.value,
+                    showGrid,
+                    showAxes,
+                    activeLayerFilter,
+                    moveSpeed,
+                    rotSpeed,
+                    cameraSensitivity: camera.angularSensibilityX,
+                    zoomSpeed: Number(zoomSpeedInput.value),
+                    dragSensitivity,
+                    transformMode: transformModeSelect.value,
+                },
+                camera: {
+                    alpha: camera.alpha,
+                    beta: camera.beta,
+                    radius: camera.radius,
+                    target: cloneVec(camera.target),
+                },
+                savedView: savedView
+                    ? { alpha: savedView.alpha, beta: savedView.beta, radius: savedView.radius, target: cloneVec(savedView.target) }
+                    : null,
+                activeModelId: currentSplatMesh ? loadedModels.find((m) => m.mesh === currentSplatMesh)?.id ?? null : null,
+                models: loadedModels.map((m) => ({
+                    id: m.id,
+                    name: m.name,
+                    layer: m.layer || "Default",
+                    locked: Boolean(m.locked),
+                    dataUrl: m.dataUrl || null,
+                    transform: {
+                        position: cloneVec(m.mesh.position),
+                        rotation: cloneVec(m.mesh.rotation),
+                        scaling: cloneVec(m.mesh.scaling),
+                    },
+                })),
+            };
+        }
+
+        async function applyProjectState(project) {
+            if (!project || !Array.isArray(project.models)) throw new Error("Invalid project file.");
+            clearAllModels();
+
+            if (project.app) {
+                bgColorInput.value = project.app.bgColor || "#000000";
+                scene.clearColor = hexToColor4(bgColorInput.value);
+                qualitySelect.value = project.app.quality || "balanced";
+                applyQualityPreset(qualitySelect.value);
+                moveSpeed = Number(project.app.moveSpeed || 10);
+                rotSpeed = Number(project.app.rotSpeed || 1.4);
+                moveSpeedInput.value = String(moveSpeed);
+                rotSpeedInput.value = String(rotSpeed);
+                moveSpeedLabel.textContent = moveSpeed.toFixed(1);
+                rotSpeedLabel.textContent = rotSpeed.toFixed(2);
+                const camSens = Number(project.app.cameraSensitivity || 3000);
+                camSensInput.value = String(camSens);
+                camera.angularSensibilityX = camSens;
+                camera.angularSensibilityY = camSens;
+                camSensLabel.textContent = String(camSens);
+                const z = Number(project.app.zoomSpeed || 11);
+                zoomSpeedInput.value = String(z);
+                zoomSpeedLabel.textContent = String(z);
+                camera.wheelPrecision = 21 - z;
+                dragSensitivity = Number(project.app.dragSensitivity || 0.15);
+                dragSensInput.value = String(dragSensitivity);
+                dragSensLabel.textContent = dragSensitivity.toFixed(2);
+                transformModeSelect.value = project.app.transformMode || "rotate";
+                setGridVisible(Boolean(project.app.showGrid));
+                setAxesVisible(Boolean(project.app.showAxes));
+                activeLayerFilter = project.app.activeLayerFilter || "__all__";
+            }
+
+            for (let i = 0; i < project.models.length; i++) {
+                const m = project.models[i];
+                if (!m.dataUrl || !m.dataUrl.startsWith("data:")) {
+                    logMessage("Skipping model without embedded data: " + (m.name || ("model " + (i + 1))), "WARN");
+                    continue;
+                }
+                const file = await fetch(m.dataUrl).then((r) => r.blob()).then((blob) => new File([blob], m.name || ("Model_" + (i + 1) + ".ply"), { type: "application/octet-stream" }));
+                await loadOneFile(file, { silentStatus: true, embeddedDataUrl: m.dataUrl });
+                const loaded = loadedModels[loadedModels.length - 1];
+                if (loaded && m.transform) {
+                    loaded.layer = m.layer || "Default";
+                    loaded.locked = Boolean(m.locked);
+                    loaded.mesh.position.copyFromFloats(m.transform.position.x, m.transform.position.y, m.transform.position.z);
+                    loaded.mesh.rotation.copyFromFloats(m.transform.rotation.x, m.transform.rotation.y, m.transform.rotation.z);
+                    loaded.mesh.scaling.copyFromFloats(m.transform.scaling.x, m.transform.scaling.y, m.transform.scaling.z);
+                }
+            }
+
+            if (project.camera) {
+                camera.alpha = Number(project.camera.alpha);
+                camera.beta = Number(project.camera.beta);
+                camera.radius = Number(project.camera.radius);
+                camera.setTarget(new BABYLON.Vector3(project.camera.target.x, project.camera.target.y, project.camera.target.z), false, false, true);
+            }
+            if (project.savedView) {
+                savedView = {
+                    alpha: Number(project.savedView.alpha),
+                    beta: Number(project.savedView.beta),
+                    radius: Number(project.savedView.radius),
+                    target: new BABYLON.Vector3(project.savedView.target.x, project.savedView.target.y, project.savedView.target.z),
+                };
+            } else {
+                savedView = null;
+            }
+
+            if (project.activeModelId != null) setActiveModelById(Number(project.activeModelId));
+            else if (loadedModels.length > 0) setActiveModelById(loadedModels[loadedModels.length - 1].id);
+            refreshLayerFilterOptions();
+            layerFilterSelectEl.value = activeLayerFilter;
+            applyLayerFilter();
+
+            pushHistory("Project loaded", { markDirty: false });
+        }
+
+        function downloadTextFile(filename, text) {
+            const blob = new Blob([text], { type: "application/json" });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+
+        function fitCameraToMesh(mesh) {
+            if (!mesh) return;
+            const info = mesh.getBoundingInfo();
+            const center = info.boundingBox.centerWorld;
+            const ext = info.boundingBox.extendSizeWorld;
+            const radius = Math.max(ext.x, ext.y, ext.z) * 3.2;
+            camera.setTarget(center, false, false, true);
+            camera.radius = Math.max(radius, 0.5);
+        }
+
+        function resetTransform(mesh) {
+            if (!mesh) return;
+            mesh.position.copyFromFloats(0, 0, 0);
+            mesh.rotationQuaternion = null;
+            mesh.rotation.copyFromFloats(0, 0, 0);
+            mesh.scaling.copyFromFloats(1, 1, 1);
+        }
+
+        function readCurrentTransformToInputs() {
+            const m = currentSplatMesh;
+            if (!m) return;
+            posXInput.value = m.position.x.toFixed(3);
+            posYInput.value = m.position.y.toFixed(3);
+            posZInput.value = m.position.z.toFixed(3);
+            rotXInput.value = BABYLON.Tools.ToDegrees(m.rotation.x).toFixed(2);
+            rotYInput.value = BABYLON.Tools.ToDegrees(m.rotation.y).toFixed(2);
+            rotZInput.value = BABYLON.Tools.ToDegrees(m.rotation.z).toFixed(2);
+            sclXInput.value = m.scaling.x.toFixed(3);
+            sclYInput.value = m.scaling.y.toFixed(3);
+            sclZInput.value = m.scaling.z.toFixed(3);
+        }
+
+        function applyNumericTransformFromInputs() {
+            const m = currentSplatMesh;
+            if (!m) {
+                setStatus("No active model.");
+                return;
+            }
+            const model = loadedModels.find((x) => x.mesh === m);
+            if (model && model.locked) {
+                setStatus("Model is locked. Unlock it to transform.");
+                return;
+            }
+            const px = Number(posXInput.value);
+            const py = Number(posYInput.value);
+            const pz = Number(posZInput.value);
+            const rx = Number(rotXInput.value);
+            const ry = Number(rotYInput.value);
+            const rz = Number(rotZInput.value);
+            const sx = Number(sclXInput.value);
+            const sy = Number(sclYInput.value);
+            const sz = Number(sclZInput.value);
+            if ([px, py, pz, rx, ry, rz, sx, sy, sz].some((n) => !Number.isFinite(n))) {
+                setStatus("Numeric transform contains invalid values.");
+                return;
+            }
+            const MIN_SCALE = 0.001;
+            const MAX_SCALE = 1000;
+            const csx = Math.min(MAX_SCALE, Math.max(MIN_SCALE, sx));
+            const csy = Math.min(MAX_SCALE, Math.max(MIN_SCALE, sy));
+            const csz = Math.min(MAX_SCALE, Math.max(MIN_SCALE, sz));
+            if (csx !== sx || csy !== sy || csz !== sz) {
+                logMessage("Scale values were clamped to range [" + MIN_SCALE + ", " + MAX_SCALE + "].", "WARN");
+            }
+            m.position.copyFromFloats(px, py, pz);
+            m.rotation.copyFromFloats(BABYLON.Tools.ToRadians(rx), BABYLON.Tools.ToRadians(ry), BABYLON.Tools.ToRadians(rz));
+            m.scaling.copyFromFloats(csx, csy, csz);
+            readCurrentTransformToInputs();
+            setStatus("Numeric transform applied.");
+            pushHistory("Numeric transform");
+        }
+
+        function setCameraViewDirection(direction) {
+            const target = currentSplatMesh
+                ? currentSplatMesh.getBoundingInfo().boundingBox.centerWorld
+                : camera.target.clone();
+            const radius = camera.radius;
+            if (direction === "front") {
+                camera.alpha = -Math.PI / 2;
+                camera.beta = Math.PI / 2;
+            } else if (direction === "back") {
+                camera.alpha = Math.PI / 2;
+                camera.beta = Math.PI / 2;
+            } else if (direction === "left") {
+                camera.alpha = Math.PI;
+                camera.beta = Math.PI / 2;
+            } else if (direction === "right") {
+                camera.alpha = 0;
+                camera.beta = Math.PI / 2;
+            } else if (direction === "top") {
+                camera.alpha = -Math.PI / 2;
+                camera.beta = 0.08;
+            } else if (direction === "bottom") {
+                camera.alpha = -Math.PI / 2;
+                camera.beta = Math.PI - 0.08;
+            }
+            camera.radius = radius;
+            camera.setTarget(target, false, false, true);
+            setStatus("View set: " + direction);
+            pushHistory("View " + direction);
+        }
+
+        function drawFpsGraph() {
+            const ctx = fpsGraphEl.getContext("2d");
+            if (!ctx) return;
+            const w = fpsGraphEl.width;
+            const h = fpsGraphEl.height;
+            ctx.fillStyle = "#111";
+            ctx.fillRect(0, 0, w, h);
+            if (fpsSamples.length < 2) return;
+            const maxFps = Math.max(30, ...fpsSamples);
+            ctx.strokeStyle = "#3fb37f";
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            for (let i = 0; i < fpsSamples.length; i++) {
+                const x = (i / (FPS_HISTORY - 1)) * w;
+                const y = h - (fpsSamples[i] / maxFps) * h;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        }
+
+        function applyQualityPreset(preset) {
+            if (preset === "high") engine.setHardwareScalingLevel(1);
+            else if (preset === "balanced") engine.setHardwareScalingLevel(1.3);
+            else engine.setHardwareScalingLevel(1.8);
+            setStatus("Quality preset: " + preset);
+            engine.resize();
+        }
+
+        let gridMesh = null;
+        let axesRoot = null;
+        function setGridVisible(visible) {
+            showGrid = visible;
+            if (showGrid && !gridMesh) {
+                const lines = [];
+                const half = 15;
+                for (let i = -half; i <= half; i++) {
+                    lines.push([new BABYLON.Vector3(i, 0, -half), new BABYLON.Vector3(i, 0, half)]);
+                    lines.push([new BABYLON.Vector3(-half, 0, i), new BABYLON.Vector3(half, 0, i)]);
+                }
+                gridMesh = BABYLON.MeshBuilder.CreateLineSystem("gridLines", { lines }, scene);
+                gridMesh.color = new BABYLON.Color3(0.45, 0.45, 0.45);
+            }
+            if (gridMesh) gridMesh.setEnabled(showGrid);
+            document.getElementById("toggleGridBtn").textContent = showGrid ? "Grid On" : "Grid Off";
+        }
+
+        function makeAxisLine(name, points, color) {
+            const line = BABYLON.MeshBuilder.CreateLines(name, { points }, scene);
+            line.color = color;
+            return line;
+        }
+
+        function setAxesVisible(visible) {
+            showAxes = visible;
+            if (showAxes && !axesRoot) {
+                axesRoot = new BABYLON.TransformNode("axesRoot", scene);
+                const x = makeAxisLine("axisX", [new BABYLON.Vector3(0, 0, 0), new BABYLON.Vector3(3, 0, 0)], new BABYLON.Color3(1, 0.2, 0.2));
+                const y = makeAxisLine("axisY", [new BABYLON.Vector3(0, 0, 0), new BABYLON.Vector3(0, 3, 0)], new BABYLON.Color3(0.2, 1, 0.2));
+                const z = makeAxisLine("axisZ", [new BABYLON.Vector3(0, 0, 0), new BABYLON.Vector3(0, 0, 3)], new BABYLON.Color3(0.2, 0.45, 1));
+                x.parent = axesRoot;
+                y.parent = axesRoot;
+                z.parent = axesRoot;
+            }
+            if (axesRoot) axesRoot.setEnabled(showAxes);
+            document.getElementById("toggleAxesBtn").textContent = showAxes ? "Axes On" : "Axes Off";
+        }
+
+        async function fileToDataUrl(file) {
+            return await new Promise((resolve, reject) => {
+                const r = new FileReader();
+                r.onload = () => resolve(r.result);
+                r.onerror = () => reject(new Error("Could not read file: " + file.name));
+                r.readAsDataURL(file);
+            });
+        }
+
+        async function loadOneFile(file, options = {}) {
+            const blobUrl = URL.createObjectURL(file);
+            try {
+                showLoading("Loading " + file.name + "...");
+                const result = await BABYLON.SceneLoader.ImportMeshAsync("", "", blobUrl, scene, null, ".ply");
+                const mesh = result.meshes[0];
+                if (!mesh) throw new Error("No mesh was returned from file.");
+
+                const id = ++modelCounter;
+                mesh.name = "model_" + id;
+                const dataUrl = options.embeddedDataUrl || await fileToDataUrl(file);
+                const item = { id, mesh, name: file.name, dataUrl, layer: "Default", locked: false };
+                loadedModels.push(item);
+                setActiveModelById(id);
+                layerNameInputEl.value = item.layer;
+                refreshModelList();
+                refreshLayerFilterOptions();
+                fitCameraToMesh(mesh);
+                if (!options.silentStatus) setStatus("Loaded: " + file.name);
+            } finally {
+                URL.revokeObjectURL(blobUrl);
+                hideLoading();
+            }
+        }
+
+        async function loadPlyFromUrl(url) {
+            showLoading("Loading PLY URL...");
+            try {
+                const result = await BABYLON.SceneLoader.ImportMeshAsync("", "", url, scene, null, ".ply");
+                const mesh = result.meshes[0];
+                if (!mesh) throw new Error("No mesh returned from URL.");
+
+                const id = ++modelCounter;
+                mesh.name = "model_" + id;
+                const guessedName = url.split("/").pop()?.split("?")[0] || ("remote_" + id + ".ply");
+                const item = { id, mesh, name: guessedName, dataUrl: null, layer: "Default", locked: false };
+                loadedModels.push(item);
+                setActiveModelById(id);
+                layerNameInputEl.value = item.layer;
+                refreshModelList();
+                refreshLayerFilterOptions();
+                fitCameraToMesh(mesh);
+                setStatus("Loaded URL: " + guessedName);
+                pushHistory("Load PLY URL");
+            } catch (err) {
+                console.error(err);
+                setStatus("Failed to load PLY URL: " + (err.message || String(err)));
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function importFromSourceText(sourceText) {
+            const source = (sourceText || "").trim();
+            if (!source) {
+                fileInput.click();
+                return;
+            }
+            const s = source.toLowerCase();
+            if (s.includes("tileset.json")) {
+                viewerModeSelectEl.value = "3dtiles";
+                switchViewerMode("3dtiles");
+                tilesetUrlInputEl.value = source;
+                await load3DTilesFromUrl(source);
+                return;
+            }
+            if (s.endsWith(".ply") || s.includes(".ply?") || s.includes(".ply#")) {
+                viewerModeSelectEl.value = "ply";
+                switchViewerMode("ply");
+                await loadPlyFromUrl(source);
+                return;
+            }
+            setStatus("Unsupported import source. Use .ply or tileset.json URL.");
+        }
+
+        async function loadFiles(files) {
+            const onlyPly = files.filter((f) => f.name.toLowerCase().endsWith(".ply"));
+            if (onlyPly.length === 0) {
+                setStatus("No .ply files found.");
+                return;
+            }
+            for (let i = 0; i < onlyPly.length; i++) {
+                const f = onlyPly[i];
+                try {
+                    showLoading("Loading (" + (i + 1) + "/" + onlyPly.length + ") " + f.name);
+                    await loadOneFile(f);
+                } catch (err) {
+                    console.error(err);
+                    setStatus("Failed to load " + f.name + ": " + (err.message || String(err)));
+                }
+            }
+            hideLoading();
+            pushHistory("Load files");
+        }
+
+        // Proxy plane acts as a stable hit zone for pivot picking.
+        const proxyPlane = BABYLON.MeshBuilder.CreatePlane("proxy", {size: 1000}, scene);
+        proxyPlane.isVisible = false;
+        proxyPlane.isPickable = true;
+
+        const fileInput = document.getElementById("fileInput");
+        const projectInput = document.getElementById("projectInput");
+        const importBtn = document.getElementById("importBtn");
+        const saveProjectBtn = document.getElementById("saveProjectBtn");
+        const loadProjectBtn = document.getElementById("loadProjectBtn");
+        const clearAllBtn = document.getElementById("clearAllBtn");
+        const removeModelBtn = document.getElementById("removeModelBtn");
+        const focusModelBtn = document.getElementById("focusModelBtn");
+        const hideModelBtn = document.getElementById("hideModelBtn");
+        const showAllBtn = document.getElementById("showAllBtn");
+        const isolateModelBtn = document.getElementById("isolateModelBtn");
+        const clearIsolationBtn = document.getElementById("clearIsolationBtn");
+        const assignLayerBtn = document.getElementById("assignLayerBtn");
+        const filterLayerBtn = document.getElementById("filterLayerBtn");
+        const fitBtn = document.getElementById("fitBtn");
+        const resetCamBtn = document.getElementById("resetCamBtn");
+        const saveViewBtn = document.getElementById("saveViewBtn");
+        const restoreViewBtn = document.getElementById("restoreViewBtn");
+        const resetTransformBtn = document.getElementById("resetTransformBtn");
+        const snapshotBtn = document.getElementById("snapshotBtn");
+        const toggleGridBtn = document.getElementById("toggleGridBtn");
+        const toggleAxesBtn = document.getElementById("toggleAxesBtn");
+        const applyNumericTransformBtn = document.getElementById("applyNumericTransformBtn");
+        const readNumericTransformBtn = document.getElementById("readNumericTransformBtn");
+        const resetPosBtn = document.getElementById("resetPosBtn");
+        const resetRotBtn = document.getElementById("resetRotBtn");
+        const resetScaleBtn = document.getElementById("resetScaleBtn");
+        const viewFrontBtn = document.getElementById("viewFrontBtn");
+        const viewBackBtn = document.getElementById("viewBackBtn");
+        const viewLeftBtn = document.getElementById("viewLeftBtn");
+        const viewRightBtn = document.getElementById("viewRightBtn");
+        const viewTopBtn = document.getElementById("viewTopBtn");
+        const viewBottomBtn = document.getElementById("viewBottomBtn");
+        const loadTilesBtn = document.getElementById("loadTilesBtn");
+        const clearTilesBtn = document.getElementById("clearTilesBtn");
+        const tabButtons = document.querySelectorAll(".tabBtn");
+
+        importBtn.addEventListener("click", async () => {
+            await importFromSourceText(importSourceInputEl.value);
+        });
+        importSourceInputEl.addEventListener("keydown", async (e) => {
+            if (e.key !== "Enter") return;
+            e.preventDefault();
+            await importFromSourceText(importSourceInputEl.value);
+        });
+        toggleUiBtn.addEventListener("click", () => {
+            const isHidden = ui.classList.toggle("hiddenPanel");
+            toggleUiBtn.textContent = isHidden ? "Show Controls" : "Hide Controls";
+            positionToggleButton();
+        });
+        tabButtons.forEach((btn) => {
+            btn.addEventListener("click", () => setActiveTab(btn.dataset.tab));
+        });
+        viewerModeSelectEl.addEventListener("change", () => {
+            switchViewerMode(viewerModeSelectEl.value);
+        });
+        loadTilesBtn.addEventListener("click", async () => {
+            await load3DTilesFromUrl((tilesetUrlInputEl.value || "").trim());
+        });
+        clearTilesBtn.addEventListener("click", clear3DTiles);
+        loadProjectBtn.addEventListener("click", () => projectInput.click());
+        saveProjectBtn.addEventListener("click", () => {
+            if (loadedModels.length === 0) {
+                setStatus("No model loaded to save.");
+                return;
+            }
+            showLoading("Packing project...");
+            try {
+                const state = captureProjectState();
+                const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+                const fileName = "plyviewer-" + stamp + ".pvproj";
+                const projectText = JSON.stringify(state);
+                downloadTextFile(fileName, projectText);
+                currentProjectName = fileName;
+                markDirty(false);
+                setStatus("Project saved.");
+            } catch (err) {
+                logMessage("Project save failed: " + (err.message || String(err)), "ERROR");
+                setStatus("Project save failed.");
+            } finally {
+                hideLoading();
+            }
+        });
+
+        clearAllBtn.addEventListener("click", clearAllModels);
+        removeModelBtn.addEventListener("click", () => {
+            const id = Number(modelListEl.value);
+            if (!Number.isFinite(id)) return;
+            removeModelById(id);
+        });
+        focusModelBtn.addEventListener("click", () => fitCameraToMesh(currentSplatMesh));
+        hideModelBtn.addEventListener("click", () => {
+            const ids = getSelectedModelIds();
+            if (ids.length === 0) {
+                setStatus("No active model.");
+                return;
+            }
+            for (const id of ids) {
+                const m = loadedModels.find((x) => x.id === id);
+                if (m) m.mesh.setEnabled(false);
+            }
+            const next = loadedModels.find((m) => m.mesh.isEnabled());
+            currentSplatMesh = next ? next.mesh : null;
+            updateSplatInfoPanel();
+            refreshModelList();
+            setStatus(ids.length > 1 ? "Selected models hidden." : "Selected model hidden.");
+            pushHistory("Hide models");
+        });
+        showAllBtn.addEventListener("click", () => {
+            activeLayerFilter = "__all__";
+            layerFilterSelectEl.value = "__all__";
+            for (const m of loadedModels) m.mesh.setEnabled(true);
+            if (!currentSplatMesh && loadedModels.length) currentSplatMesh = loadedModels[0].mesh;
+            updateSplatInfoPanel();
+            setStatus("All models shown.");
+            pushHistory("Show all");
+        });
+        isolateModelBtn.addEventListener("click", () => {
+            const ids = new Set(getSelectedModelIds());
+            if (ids.size === 0) {
+                setStatus("No active model.");
+                return;
+            }
+            for (const m of loadedModels) m.mesh.setEnabled(ids.has(m.id));
+            const first = loadedModels.find((m) => ids.has(m.id));
+            currentSplatMesh = first ? first.mesh : null;
+            refreshModelList();
+            setStatus(ids.size > 1 ? "Isolated selected models." : "Isolated selected model.");
+            pushHistory("Isolate models");
+        });
+        clearIsolationBtn.addEventListener("click", () => {
+            for (const m of loadedModels) {
+                const pass = activeLayerFilter === "__all__" || (m.layer || "Default") === activeLayerFilter;
+                m.mesh.setEnabled(pass);
+            }
+            setStatus("Isolation cleared.");
+            pushHistory("Clear isolation");
+        });
+        assignLayerBtn.addEventListener("click", () => {
+            const ids = getSelectedModelIds();
+            if (ids.length === 0) {
+                setStatus("No active model.");
+                return;
+            }
+            const name = (layerNameInputEl.value || "").trim() || "Default";
+            for (const id of ids) {
+                const hit = loadedModels.find((m) => m.id === id);
+                if (hit) hit.layer = name;
+            }
+            refreshModelList();
+            refreshLayerFilterOptions();
+            setStatus((ids.length > 1 ? "Assigned layer to selected models: " : "Assigned layer: ") + name);
+            pushHistory("Assign layer");
+        });
+        filterLayerBtn.addEventListener("click", () => {
+            applyLayerFilter();
+            pushHistory("Filter layer");
+        });
+        layerFilterSelectEl.addEventListener("change", () => {
+            applyLayerFilter();
+            pushHistory("Layer filter change");
+        });
+        fitBtn.addEventListener("click", () => fitCameraToMesh(currentSplatMesh));
+        resetCamBtn.addEventListener("click", () => {
+            camera.alpha = defaultCamera.alpha;
+            camera.beta = defaultCamera.beta;
+            camera.radius = defaultCamera.radius;
+            camera.setTarget(defaultCamera.target, false, false, true);
+            setStatus("Camera reset.");
+        });
+        saveViewBtn.addEventListener("click", () => {
+            savedView = {
+                alpha: camera.alpha,
+                beta: camera.beta,
+                radius: camera.radius,
+                target: camera.target.clone(),
+            };
+            setStatus("Viewpoint saved.");
+        });
+        restoreViewBtn.addEventListener("click", () => {
+            if (!savedView) {
+                setStatus("No saved viewpoint yet.");
+                return;
+            }
+            camera.alpha = savedView.alpha;
+            camera.beta = savedView.beta;
+            camera.radius = savedView.radius;
+            camera.setTarget(savedView.target, false, false, true);
+            setStatus("Viewpoint restored.");
+        });
+        resetTransformBtn.addEventListener("click", () => {
+            const model = loadedModels.find((x) => x.mesh === currentSplatMesh);
+            if (model && model.locked) {
+                setStatus("Model is locked. Unlock it to transform.");
+                return;
+            }
+            resetTransform(currentSplatMesh);
+            setStatus("Transform reset.");
+        });
+        snapshotBtn.addEventListener("click", () => {
+            BABYLON.Tools.CreateScreenshot(engine, camera, { precision: 1 });
+            setStatus("Screenshot requested.");
+        });
+        applyNumericTransformBtn.addEventListener("click", applyNumericTransformFromInputs);
+        readNumericTransformBtn.addEventListener("click", () => {
+            readCurrentTransformToInputs();
+            setStatus("Numeric fields synced.");
+        });
+        resetPosBtn.addEventListener("click", () => {
+            posXInput.value = "0";
+            posYInput.value = "0";
+            posZInput.value = "0";
+            setStatus("Position inputs reset.");
+        });
+        resetRotBtn.addEventListener("click", () => {
+            rotXInput.value = "0";
+            rotYInput.value = "0";
+            rotZInput.value = "0";
+            setStatus("Rotation inputs reset.");
+        });
+        resetScaleBtn.addEventListener("click", () => {
+            sclXInput.value = "1";
+            sclYInput.value = "1";
+            sclZInput.value = "1";
+            setStatus("Scale inputs reset.");
+        });
+        toggleGridBtn.addEventListener("click", () => setGridVisible(!showGrid));
+        toggleAxesBtn.addEventListener("click", () => setAxesVisible(!showAxes));
+        undoBtn.addEventListener("click", undoHistory);
+        redoBtn.addEventListener("click", redoAction);
+
+        viewFrontBtn.addEventListener("click", () => setCameraViewDirection("front"));
+        viewBackBtn.addEventListener("click", () => setCameraViewDirection("back"));
+        viewLeftBtn.addEventListener("click", () => setCameraViewDirection("left"));
+        viewRightBtn.addEventListener("click", () => setCameraViewDirection("right"));
+        viewTopBtn.addEventListener("click", () => setCameraViewDirection("top"));
+        viewBottomBtn.addEventListener("click", () => setCameraViewDirection("bottom"));
+
+        modelListEl.addEventListener("change", () => {
+            const id = Number(modelListEl.selectedOptions[0]?.value);
+            if (!Number.isFinite(id)) return;
+            setActiveModelById(id);
+            const hit = loadedModels.find((m) => m.id === id);
+            if (hit) layerNameInputEl.value = hit.layer || "Default";
+        });
+
+        moveSpeedInput.addEventListener("input", () => {
+            moveSpeed = Number(moveSpeedInput.value);
+            moveSpeedLabel.textContent = moveSpeed.toFixed(1);
+        });
+        rotSpeedInput.addEventListener("input", () => {
+            rotSpeed = Number(rotSpeedInput.value);
+            rotSpeedLabel.textContent = rotSpeed.toFixed(2);
+        });
+        camSensInput.addEventListener("input", () => {
+            const value = Number(camSensInput.value);
+            camera.angularSensibilityX = value;
+            camera.angularSensibilityY = value;
+            camSensLabel.textContent = String(value);
+        });
+        zoomSpeedInput.addEventListener("input", () => {
+            const speed = Number(zoomSpeedInput.value);
+            // ArcRotateCamera: lower wheelPrecision = faster zoom.
+            camera.wheelPrecision = 21 - speed;
+            zoomSpeedLabel.textContent = String(speed);
+        });
+        dragSensInput.addEventListener("input", () => {
+            dragSensitivity = Number(dragSensInput.value);
+            dragSensLabel.textContent = dragSensitivity.toFixed(2);
+        });
+        bgColorInput.addEventListener("input", () => {
+            scene.clearColor = hexToColor4(bgColorInput.value);
+            pushHistory("Background color");
+        });
+        qualitySelect.addEventListener("change", () => {
+            applyQualityPreset(qualitySelect.value);
+            pushHistory("Quality preset");
+        });
+
+        fileInput.addEventListener("change", async (event) => {
+            const files = [...(event.target.files || [])];
+            if (!files.length) return;
+            switchViewerMode("ply");
+            await loadFiles(files);
+            fileInput.value = "";
+        });
+        projectInput.addEventListener("change", async (event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            showLoading("Loading project...");
+            try {
+                const text = await file.text();
+                const project = JSON.parse(text);
+                await applyProjectState(project);
+                currentProjectName = file.name;
+                markDirty(false);
+                setStatus("Project loaded: " + file.name);
+            } catch (err) {
+                logMessage("Project load failed: " + (err.message || String(err)), "ERROR");
+                setStatus("Project load failed.");
+            } finally {
+                hideLoading();
+                projectInput.value = "";
+            }
+        });
+
+        window.addEventListener("dragenter", (e) => {
+            if (viewerMode !== "ply") return;
+            const hasFiles = [...(e.dataTransfer?.types || [])].includes("Files");
+            if (!hasFiles) return;
+            e.preventDefault();
+            dropOverlayEl.style.display = "flex";
+        });
+        window.addEventListener("dragover", (e) => {
+            if (viewerMode !== "ply") return;
+            const hasFiles = [...(e.dataTransfer?.types || [])].includes("Files");
+            if (!hasFiles) return;
+            e.preventDefault();
+            dropOverlayEl.style.display = "flex";
+        });
+        window.addEventListener("dragleave", (e) => {
+            if (viewerMode !== "ply") return;
+            const hasFiles = [...(e.dataTransfer?.types || [])].includes("Files");
+            if (!hasFiles) return;
+            e.preventDefault();
+            if (e.target === document.documentElement || e.target === document.body) {
+                dropOverlayEl.style.display = "none";
+            }
+        });
+        window.addEventListener("drop", async (e) => {
+            if (viewerMode !== "ply") return;
+            const hasFiles = [...(e.dataTransfer?.types || [])].includes("Files");
+            if (!hasFiles) return;
+            e.preventDefault();
+            dropOverlayEl.style.display = "none";
+            const files = [...(e.dataTransfer?.files || [])];
+            await loadFiles(files);
+        });
+        canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+        function canvasPointFromEvent(e) {
+            const rect = canvas.getBoundingClientRect();
+            return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        }
+
+        function endRightDrag(pushCommit = true) {
+            if (!rightDragState) return;
+            const moved = rightDragState.moved;
+            const state = rightDragState;
+            rightDragState = null;
+            canvas.style.cursor = "";
+            // Keep the final pan target committed in ArcRotate internals.
+            if (state.mode === "pan") {
+                camera.setTarget(camera.target.clone(), false, false, true);
+            }
+            if (pushCommit && moved && state.mode === "move") pushHistory("Mouse drag commit");
+        }
+
+        canvas.addEventListener("pointerdown", (e) => {
+            if (viewerMode !== "ply") return;
+            if (e.button !== 2) return;
+            let mode = "pan";
+            if (e.shiftKey) {
+                mode = "move";
+                if (!currentSplatMesh) return;
+                const model = loadedModels.find((x) => x.mesh === currentSplatMesh);
+                if (model && model.locked) {
+                    setStatus("Model is locked. Unlock it to drag.");
+                    return;
+                }
+            }
+            const startPointer = canvasPointFromEvent(e);
+            const camWorld = camera.getWorldMatrix();
+            const right = new BABYLON.Vector3(camWorld.m[0], camWorld.m[1], camWorld.m[2]).normalize();
+            const up = new BABYLON.Vector3(camWorld.m[4], camWorld.m[5], camWorld.m[6]).normalize();
+            const pixels = Math.max(1, Math.min(canvas.clientWidth || 1, canvas.clientHeight || 1));
+            const worldPerPixel = (camera.radius / pixels) * 2.8;
+
+            rightDragState = {
+                startPick: null,
+                startPos: currentSplatMesh ? currentSplatMesh.position.clone() : null,
+                lastPick: null,
+                lastMove: BABYLON.Vector3.Zero(),
+                moved: false,
+                pointerId: e.pointerId,
+                startPointer,
+                lastPointer: startPointer,
+                rightVec: right,
+                upVec: up,
+                worldPerPixel,
+                mode,
+                startTarget: camera.target.clone(),
+            };
+            canvas.setPointerCapture?.(e.pointerId);
+            canvas.style.cursor = "grabbing";
+            e.stopPropagation();
+            e.preventDefault();
+        });
+        canvas.addEventListener("pointermove", (e) => {
+            if (viewerMode !== "ply") return;
+            if (!rightDragState) return;
+            if (e.pointerId !== rightDragState.pointerId) return;
+            const p = canvasPointFromEvent(e);
+            const fallbackDx = p.x - rightDragState.lastPointer.x;
+            const fallbackDy = p.y - rightDragState.lastPointer.y;
+            const dx = (typeof e.movementX === "number" && Number.isFinite(e.movementX)) ? e.movementX : fallbackDx;
+            const dy = (typeof e.movementY === "number" && Number.isFinite(e.movementY)) ? e.movementY : fallbackDy;
+            rightDragState.lastPointer = p;
+
+            // Incremental movement is more stable across long drags and avoids anchor drift.
+            const stepScale = Math.max(0.0005, camera.radius * 0.0032) * dragSensitivity;
+            const step = rightDragState.rightVec.scale(dx * stepScale)
+                .add(rightDragState.upVec.scale(-dy * stepScale));
+            if (rightDragState.mode === "move") {
+                if (!currentSplatMesh) return;
+                currentSplatMesh.position.addInPlace(step);
+            } else {
+                // Invert pan vector so drag direction follows cursor ("grab canvas" feel).
+                const newTarget = camera.target.subtract(step);
+                // Use setTarget so ArcRotate internal state remains consistent and doesn't snap back.
+                camera.setTarget(newTarget, false, false, true);
+            }
+            rightDragState.lastMove.addInPlace(step);
+            if (Math.abs(dx) > 0 || Math.abs(dy) > 0) rightDragState.moved = true;
+            if (rightDragState.mode === "move") readCurrentTransformToInputs();
+            e.stopPropagation();
+            e.preventDefault();
+        });
+        canvas.addEventListener("pointerup", (e) => {
+            if (viewerMode !== "ply") return;
+            if (!rightDragState) return;
+            if (e.pointerId !== rightDragState.pointerId) return;
+            endRightDrag(true);
+            e.stopPropagation();
+            e.preventDefault();
+        });
+        canvas.addEventListener("pointercancel", (e) => {
+            if (viewerMode !== "ply") return;
+            if (rightDragState && e.pointerId === rightDragState.pointerId) endRightDrag(true);
+        });
+        canvas.addEventListener("pointerleave", () => {
+            if (viewerMode !== "ply") return;
+            endRightDrag(true);
+        });
+        canvas.addEventListener("wheel", (e) => {
+            if (viewerMode !== "ply") return;
+            if (!rightDragState) return;
+            // Block zoom changes while model drag is active.
+            e.stopPropagation();
+            e.preventDefault();
+        }, { passive: false });
+
+        canvas.addEventListener("dblclick", () => {
+            if (viewerMode !== "ply") return;
+            if (!currentSplatMesh) return;
+            proxyPlane.position.copyFrom(camera.target);
+            proxyPlane.lookAt(camera.position);
+            const pickInfo = scene.pick(scene.pointerX, scene.pointerY, (m) => m === proxyPlane);
+
+            if (pickInfo.hit && pickInfo.pickedPoint) {
+                targetGlide = {
+                    from: camera.getTarget().clone(),
+                    to: pickInfo.pickedPoint.clone(),
+                    elapsed: 0,
+                    duration: 0.35,
+                };
+            }
+        });
+
+        const keysDown = new Set();
+
+        window.addEventListener("keydown", (e) => {
+            const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+            keysDown.add(k);
+            if ("wasdqerftg+-jluoik".includes(k)) e.preventDefault();
+            const activeModel = currentSplatMesh ? loadedModels.find((x) => x.mesh === currentSplatMesh) : null;
+            if (!transformActionActive && ("qerftgjluoik+-=".includes(k)) && !(activeModel && activeModel.locked)) {
+                transformActionActive = true;
+                pushHistory("Transform start");
+            }
+            if ((e.ctrlKey || e.metaKey) && k === "z") {
+                e.preventDefault();
+                undoHistory();
+            }
+            if ((e.ctrlKey || e.metaKey) && k === "y") {
+                e.preventDefault();
+                redoAction();
+            }
+        });
+        window.addEventListener("keyup", (e) => {
+            const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+            keysDown.delete(k);
+            if (transformActionActive && ("qerftgjluoik+-=".includes(k))) {
+                transformActionActive = false;
+                pushHistory("Transform commit");
+            }
+        });
+        window.addEventListener("blur", () => keysDown.clear());
+        window.addEventListener("beforeunload", (e) => {
+            if (!isProjectDirty) return;
+            e.preventDefault();
+            e.returnValue = "";
+        });
+
+        scene.onBeforeRenderObservable.add(() => {
+            if (viewerMode !== "ply") return;
+            const fps = Math.round(engine.getFps());
+            fpsValueEl.textContent = String(fps);
+            fpsSamples.push(fps);
+            if (fpsSamples.length > FPS_HISTORY) fpsSamples.shift();
+            drawFpsGraph();
+
+            const dt = Math.min(engine.getDeltaTime() / 1000, 0.05);
+            if (dt <= 0) return;
+
+            if (targetGlide) {
+                targetGlide.elapsed += dt;
+                const t = Math.min(1, targetGlide.elapsed / targetGlide.duration);
+                const lerped = BABYLON.Vector3.Lerp(targetGlide.from, targetGlide.to, t);
+                camera.setTarget(lerped, false, false, true);
+                if (t >= 1) targetGlide = null;
+            }
+
+            const forward = camera.target.subtract(camera.position);
+            forward.y = 0;
+            if (forward.lengthSquared() < 1e-10) forward.copyFromFloats(0, 0, 1);
+            else forward.normalize();
+            const right = BABYLON.Vector3.Cross(forward, BABYLON.Vector3.Up());
+            right.normalize();
+
+            const step = moveSpeed * dt;
+            if (keysDown.has("w")) {
+                camera.target.x += forward.x * step;
+                camera.target.z += forward.z * step;
+            }
+            if (keysDown.has("s")) {
+                camera.target.x -= forward.x * step;
+                camera.target.z -= forward.z * step;
+            }
+            if (keysDown.has("d")) {
+                camera.target.x += right.x * step;
+                camera.target.z += right.z * step;
+            }
+            if (keysDown.has("a")) {
+                camera.target.x -= right.x * step;
+                camera.target.z -= right.z * step;
+            }
+
+            if (!currentSplatMesh) return;
+            const activeModel = loadedModels.find((x) => x.mesh === currentSplatMesh);
+            if (activeModel && activeModel.locked) return;
+            const pivot = camera.getTarget();
+            const r = rotSpeed * dt;
+            const mode = transformModeSelect.value;
+
+            if (mode === "rotate") {
+                if (keysDown.has("q")) currentSplatMesh.rotateAround(pivot, BABYLON.Axis.Y, r);
+                if (keysDown.has("e")) currentSplatMesh.rotateAround(pivot, BABYLON.Axis.Y, -r);
+                if (keysDown.has("r")) currentSplatMesh.rotateAround(pivot, BABYLON.Axis.X, r);
+                if (keysDown.has("f")) currentSplatMesh.rotateAround(pivot, BABYLON.Axis.X, -r);
+                if (keysDown.has("t")) currentSplatMesh.rotateAround(pivot, BABYLON.Axis.Z, r);
+                if (keysDown.has("g")) currentSplatMesh.rotateAround(pivot, BABYLON.Axis.Z, -r);
+            } else if (mode === "translate") {
+                const tr = moveSpeed * 0.55 * dt;
+                if (keysDown.has("j")) currentSplatMesh.position.x -= tr;
+                if (keysDown.has("l")) currentSplatMesh.position.x += tr;
+                if (keysDown.has("u")) currentSplatMesh.position.y += tr;
+                if (keysDown.has("o")) currentSplatMesh.position.y -= tr;
+                if (keysDown.has("i")) currentSplatMesh.position.z += tr;
+                if (keysDown.has("k")) currentSplatMesh.position.z -= tr;
+            } else if (mode === "scale") {
+                const s = 1 + 0.9 * dt;
+                if (keysDown.has("+") || keysDown.has("=")) currentSplatMesh.scaling.scaleInPlace(s);
+                if (keysDown.has("-") || keysDown.has("_")) currentSplatMesh.scaling.scaleInPlace(1 / s);
+            }
+        });
+
+        // Initial values.
+        moveSpeedLabel.textContent = moveSpeed.toFixed(1);
+        rotSpeedLabel.textContent = rotSpeed.toFixed(2);
+        camSensLabel.textContent = String(camera.angularSensibilityX);
+        zoomSpeedLabel.textContent = String(zoomSpeedInput.value);
+        camera.wheelPrecision = 21 - Number(zoomSpeedInput.value);
+        dragSensitivity = Number(dragSensInput.value);
+        dragSensLabel.textContent = dragSensitivity.toFixed(2);
+        applyQualityPreset(qualitySelect.value);
+        setGridVisible(false);
+        setAxesVisible(false);
+        updateSplatInfoPanel();
+        refreshModelList();
+        pushHistory("Initial state", { markDirty: false });
+        markDirty(false);
+        switchViewerMode("ply");
+        positionToggleButton();
+
+        engine.runRenderLoop(() => scene.render());
+        window.addEventListener("resize", () => {
+            engine.resize();
+            positionToggleButton();
+        });
+    </script>
+</body>
+</html>

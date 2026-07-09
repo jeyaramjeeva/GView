@@ -1,6 +1,6 @@
 {
   "name": "gview",
-  "version": "1.0.0",
+  "version": "1.3.0",
   "description": "GView desktop viewer app",
   "main": "main.js",
   "scripts": {
@@ -24,13 +24,14 @@
     "productName": "GView",
     "files": [
       "main.js",
+      "preload.js",
       "PlyViewer.html"
     ],
     "directories": {
       "buildResources": "build"
     },
     "win": {
-      "icon": "C:/Users/Jjeyara/Downloads/Logo.png",
+      "icon": "C:/Users/Jjeyara/Downloads/LogoNew.png",
       "target": [
         "nsis"
       ]
@@ -41,3 +42,4 @@
     }
   }
 }
+

@@ -6,8 +6,7 @@
     <title>GView</title>
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
     <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
-    <script src="https://cesium.com/downloads/cesiumjs/releases/1.123/Build/Cesium/Cesium.js"></script>
-    <link href="https://cesium.com/downloads/cesiumjs/releases/1.123/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <script type="module" src="https://js.arcgis.com/5.0/"></script>
     <style>
         :root {
             color-scheme: dark;
@@ -37,11 +36,55 @@
         }
 
         #renderCanvas { width: 100%; height: 100%; touch-action: none; background: #050505; }
-        #cesiumContainer {
+        #renderCanvas.ply-basemap-on {
+            position: relative;
+            z-index: 2;
+            background: transparent !important;
+        }
+        #arcgisSceneWrap {
             position: absolute;
             inset: 0;
+            z-index: 2;
             display: none;
             background: #050505;
+        }
+        #arcgisSceneWrap.active { display: block; }
+        #arcgisSceneWrap.backdrop {
+            z-index: 1;
+            pointer-events: none;
+        }
+        #gviewArcgisScene {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        #plyModeControls { display: block; }
+        #tilesLoaderSection { display: none; }
+        #orthoPhotoOverlay {
+            position: absolute;
+            inset: 0;
+            z-index: 5;
+            pointer-events: none;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        #orthoPhotoOverlay img {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            image-rendering: auto;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+        #orthoPhotoOverlay canvas {
+            display: none;
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
         }
 
         #ui {
@@ -72,13 +115,13 @@
             margin-bottom: 10px;
         }
         #appLogo {
-            width: 40px;
-            height: 40px;
+            width: 56px;
+            height: 56px;
             object-fit: contain;
             border-radius: 8px;
             border: 1px solid rgba(158, 194, 255, 0.35);
             background: rgba(9, 14, 24, 0.35);
-            padding: 3px;
+            padding: 2px;
             flex-shrink: 0;
         }
 
@@ -104,7 +147,7 @@
         .row > * { flex: 1; }
         #tabsBar {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(7, 1fr);
             gap: 6px;
             margin-bottom: 10px;
         }
@@ -187,6 +230,68 @@
         }
         #helpPanel b { color: #ffffff; font-weight: 700; }
 
+        #viewCube {
+            position: absolute;
+            right: 18px;
+            top: 86px;
+            z-index: 10;
+            width: 92px;
+            padding: 8px;
+            border-radius: 10px;
+            background: rgba(10, 16, 28, 0.52);
+            border: 1px solid rgba(158, 194, 255, 0.28);
+            backdrop-filter: blur(7px);
+            -webkit-backdrop-filter: blur(7px);
+        }
+        #viewCube .title {
+            font-size: 10px;
+            text-transform: uppercase;
+            color: #cfe0ff;
+            letter-spacing: 0.08em;
+            margin-bottom: 6px;
+            text-align: center;
+        }
+        #viewCubeGrid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+        }
+        .viewCubeBtn {
+            padding: 6px 0;
+            font-size: 10px;
+            border-radius: 6px;
+        }
+
+        #closeModal {
+            position: fixed;
+            inset: 0;
+            z-index: 30;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(3, 6, 12, 0.56);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+        #closeModalCard {
+            width: min(440px, calc(100% - 40px));
+            background: rgba(11, 17, 29, 0.96);
+            border: 1px solid rgba(158, 194, 255, 0.3);
+            border-radius: 12px;
+            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.45);
+            padding: 14px;
+        }
+        #closeModalTitle {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        #closeModalText {
+            font-size: 12px;
+            color: #c7d8fa;
+            margin-bottom: 12px;
+        }
+
         .small { font-size: 11px; color: #c9d7f3; }
         input[type="range"] { width: 100%; accent-color: #6db2ff; }
         label { display: block; font-size: 11px; color: #d5e2ff; margin: 6px 0 4px 0; }
@@ -265,28 +370,31 @@
             white-space: pre-wrap;
         }
 
-        #splatInfoPanel {
-            position: absolute;
-            top: 18px;
-            right: 18px;
-            z-index: 10;
-            background: rgba(10, 15, 24, 0.8);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            padding: 10px 14px;
-            border-radius: 12px;
-            color: #e8eefe;
-            border: 1px solid rgba(142, 178, 242, 0.28);
-            font-size: 13px;
-            pointer-events: none;
-            text-align: right;
-            min-width: 128px;
-            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+        #infoStatsGrid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 10px;
         }
-        #splatInfoPanel .label { font-size: 10px; color: #9fb1d8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
-        #splatInfoPanel .value { font-variant-numeric: tabular-nums; font-weight: 700; color: #fff; }
-        #splatInfoPanel .stat { margin-top: 10px; }
-        #splatInfoPanel .stat:first-child { margin-top: 0; }
+        .infoStatCard {
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(148, 184, 255, 0.22);
+            background: rgba(10, 16, 27, 0.65);
+        }
+        .infoStatCard .label {
+            font-size: 10px;
+            color: #9fb1d8;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 4px;
+        }
+        .infoStatCard .value {
+            font-size: 18px;
+            font-variant-numeric: tabular-nums;
+            font-weight: 700;
+            color: #fff;
+        }
 
         #dropOverlay {
             position: absolute;
@@ -300,6 +408,27 @@
             font-size: 24px;
             border: 3px dashed #6eb8ff;
             letter-spacing: 0.04em;
+            pointer-events: none;
+        }
+        #selectRect {
+            position: absolute;
+            z-index: 13;
+            display: none;
+            border: 1px dashed #7db8ff;
+            background: rgba(75, 140, 255, 0.16);
+            pointer-events: none;
+        }
+        #brushCursor {
+            position: absolute;
+            z-index: 14;
+            display: none;
+            width: 20px;
+            height: 20px;
+            margin-left: -10px;
+            margin-top: -10px;
+            border: 1px solid rgba(141, 193, 255, 0.95);
+            border-radius: 50%;
+            background: rgba(76, 145, 255, 0.14);
             pointer-events: none;
         }
         #loadingOverlay {
@@ -347,27 +476,40 @@
     <button id="toggleUiBtn">Hide Controls</button>
     <div id="ui">
         <div id="uiHeader">
-            <img id="appLogo" src="file:///C:/Users/Jjeyara/Downloads/Logo.png" alt="GView Logo">
+            <img id="appLogo" src="file:///C:/Users/Jjeyara/Downloads/LogoNew.png" alt="GView Logo">
             <div id="uiTitle">GView</div>
         </div>
         <label>Viewer Mode</label>
         <select id="viewerModeSelect">
             <option value="ply" selected>PLY / Gaussian Splat</option>
-            <option value="3dtiles">3D Tiles</option>
+            <option value="3dtiles">3D Tiles (Gaussian Splat)</option>
         </select>
+        <div id="plyModeControls">
         <div class="row">
             <button id="importBtn">Import</button>
-            <input id="importSourceInput" type="text" placeholder=".ply path/URL or tileset.json URL">
+            <input id="importSourceInput" type="text" placeholder=".ply path/URL">
             <button id="clearAllBtn" class="warning">Clear</button>
         </div>
-        <div class="section" id="tilesLoaderSection">
-            <div class="sectionTitle">3D Tiles Loader</div>
-            <label>Tileset URL (`tileset.json`)</label>
-            <input id="tilesetUrlInput" type="text" placeholder="Auto-filled by Import when tileset is detected">
+        </div>
+        <div id="tilesLoaderSection">
+            <label>Tileset URL</label>
+            <input id="tilesetUrlInput" type="text" placeholder="http://127.0.0.1:8080/tileset.json" value="http://127.0.0.1:8080/tileset.json">
             <div class="row">
-                <button id="loadTilesBtn" class="secondary">Load URL</button>
-                <button id="clearTilesBtn" class="warning">Clear Tiles</button>
+                <button id="loadTilesBtn">Load Tiles</button>
+                <button id="clearTilesBtn" class="warning">Clear</button>
             </div>
+            <div class="row">
+                <button id="tilesOverviewBtn" class="secondary">Overview</button>
+                <button id="tilesCloseupBtn" class="secondary">Close-up</button>
+                <button id="tilesZoomBtn" class="secondary">Zoom To Layer</button>
+            </div>
+            <div class="row">
+                <button id="tilesBasemapBtn" class="secondary">Toggle Basemap</button>
+                <button id="browseTilesetFolderBtn" class="secondary">Browse Folder</button>
+            </div>
+            <label>Elevation Offset (m)</label>
+            <input id="tilesElevationInput" type="number" step="0.1" value="10">
+            <div id="tilesStatusText" class="small" style="margin-top:6px;">HTML test: run http-server in your tiles folder, then Load Tiles.</div>
         </div>
         <div class="row">
             <button id="saveProjectBtn" class="secondary">Save Project</button>
@@ -380,9 +522,12 @@
 
         <div id="tabsBar">
             <button class="tabBtn active" data-tab="models">Models</button>
+            <button class="tabBtn" data-tab="edit">Edit</button>
             <button class="tabBtn" data-tab="camera">Camera</button>
             <button class="tabBtn" data-tab="transform">Transform</button>
             <button class="tabBtn" data-tab="scene">Scene</button>
+            <button class="tabBtn" data-tab="measure">Measure</button>
+            <button class="tabBtn" data-tab="info">Info</button>
         </div>
 
         <div class="tabSection active" data-tab-section="models">
@@ -412,6 +557,76 @@
             <select id="layerFilterSelect">
                 <option value="__all__">All Layers</option>
             </select>
+        </div>
+        </div>
+
+        <div class="tabSection" data-tab-section="edit">
+        <div class="section">
+            <div class="sectionTitle">Selection Tools</div>
+            <div id="selectionStats" class="small" style="margin-bottom:8px;">Selected: 0 / 0</div>
+            <div class="row">
+                <button id="selectAllBtn" class="secondary">Select All</button>
+                <button id="clearSelectionBtn" class="secondary">Clear Selection</button>
+            </div>
+            <div class="row">
+                <button id="invertSelectionBtn" class="secondary">Invert Selection</button>
+                <button id="removeSelectedBtn" class="warning">Delete Selected Models</button>
+            </div>
+            <label>Refine Radius</label>
+            <input id="refineRadiusInput" type="number" min="0.001" step="0.01" value="1.0">
+            <label>Refine Passes</label>
+            <input id="refinePassesInput" type="number" min="1" max="20" step="1" value="1">
+            <div id="refinePreviewText" class="small" style="margin:6px 0 8px 0;">Preview: set radius/passes, then click Preview.</div>
+            <button id="previewRefineBtn" class="secondary">Preview Refine</button>
+            <div class="row">
+                <button id="growSelectionBtn" class="secondary">Grow</button>
+                <button id="shrinkSelectionBtn" class="secondary">Shrink</button>
+                <button id="smoothSelectionBtn" class="secondary">Smooth</button>
+            </div>
+            <div class="row">
+                <button id="boxSelectBtn" class="secondary">Box Select: Off</button>
+                <button id="brushSelectBtn" class="secondary">Brush Select: Off</button>
+            </div>
+            <label>Brush Radius <span id="brushRadiusLabel">40 px</span></label>
+            <input id="brushRadiusInput" type="range" min="8" max="180" step="1" value="40">
+            <label>Brush Mode</label>
+            <select id="brushModeSelect">
+                <option value="replace" selected>Replace Selection</option>
+                <option value="add">Add to Selection</option>
+                <option value="subtract">Subtract from Selection</option>
+            </select>
+            <label>Selection Set Name</label>
+            <input id="selectionSetNameInput" type="text" placeholder="e.g., Facade / Roof / Noise">
+            <div class="row">
+                <button id="saveSelectionSetBtn" class="secondary">Save Set</button>
+                <button id="deleteSelectionSetBtn" class="warning">Delete Set</button>
+            </div>
+            <label>Saved Selection Sets</label>
+            <select id="selectionSetSelect">
+                <option value="">(none)</option>
+            </select>
+            <button id="applySelectionSetBtn" class="secondary">Apply Set</button>
+        </div>
+        <div class="section">
+            <div class="sectionTitle">Model Edit Tools</div>
+            <div class="row">
+                <button id="exportSelectedBtn" class="secondary">Export Selected</button>
+                <button id="cleanupOutliersBtn" class="secondary">Cleanup Outliers</button>
+            </div>
+            <label>Model Scale <span id="splatScaleLabel">1.00x</span></label>
+            <input id="splatScaleInput" type="range" min="0.10" max="3.00" step="0.01" value="1.00">
+            <div class="row">
+                <button id="applySplatScaleBtn" class="secondary">Apply Scale</button>
+                <button id="resetSplatScaleBtn" class="secondary">Reset Scale</button>
+            </div>
+            <label>Model Opacity <span id="splatOpacityLabel">100%</span></label>
+            <input id="splatOpacityInput" type="range" min="5" max="100" step="1" value="100">
+            <div class="row">
+                <button id="applySplatOpacityBtn" class="secondary">Apply Opacity</button>
+                <button id="resetSplatOpacityBtn" class="secondary">Reset Opacity</button>
+            </div>
+            <label>Outlier Threshold (radius)</label>
+            <input id="outlierThresholdInput" type="number" min="0" step="0.001" value="0.02">
         </div>
         </div>
 
@@ -509,30 +724,61 @@
                 <button id="toggleGridBtn" class="secondary">Grid Off</button>
                 <button id="toggleAxesBtn" class="secondary">Axes Off</button>
             </div>
+            <div class="row">
+                <button id="togglePlyBasemapBtn" class="secondary">Satellite Basemap Off</button>
+                <button id="alignPlyBasemapBtn" class="secondary">Align to Model</button>
+            </div>
+            <div class="small" id="plyBasemapHint" style="margin-bottom:8px;">Basemap aligns your model center to the 3D Tiles geo location. Load 3D Tiles once, or use Align to Model.</div>
             <label>Quality Preset</label>
             <select id="qualitySelect">
                 <option value="high" selected>High</option>
                 <option value="balanced">Balanced</option>
                 <option value="performance">Performance</option>
             </select>
+        </div>
+
+        </div>
+
+        <div class="tabSection" data-tab-section="measure">
+        <div class="section">
+            <div class="sectionTitle">Measurements</div>
+            <div class="row">
+                <button id="measureDistanceBtn" class="secondary">3D Distance</button>
+                <button id="measureAngleBtn" class="secondary">Angle (3 clicks)</button>
+            </div>
+            <div class="row">
+                <button id="measureClearBtn" class="warning">Clear</button>
+            </div>
+            <div id="measureHintText" class="small">PLY: click points on the model. 3D Tiles: use the panel or click for angle.</div>
+        </div>
+        </div>
+
+        <div class="tabSection" data-tab-section="info">
+        <div class="section">
+            <div class="sectionTitle">Viewer Info</div>
+            <div id="infoStatsGrid">
+                <div class="infoStatCard" aria-live="polite">
+                    <div class="label">Splats Loaded</div>
+                    <div class="value" id="splatCountValue">0</div>
+                </div>
+                <div class="infoStatCard">
+                    <div class="label">FPS</div>
+                    <div class="value" id="fpsValue">0</div>
+                </div>
+            </div>
+            <label>Models in Scene</label>
+            <div id="infoModelCount" class="small">0 loaded</div>
+            <label>Active Model</label>
+            <div id="infoActiveModel" class="small">None</div>
+            <label>FPS History</label>
             <canvas id="fpsGraph" width="280" height="38"></canvas>
         </div>
-
-        </div>
-    </div>
-
-    <div id="splatInfoPanel">
-        <div class="stat" aria-live="polite">
-            <div class="label">Splats loaded</div>
-            <div class="value" id="splatCountValue">0</div>
-        </div>
-        <div class="stat">
-            <div class="label">FPS</div>
-            <div class="value" id="fpsValue">0</div>
         </div>
     </div>
 
     <div id="dropOverlay">Drop .PLY files to load</div>
+    <div id="selectRect"></div>
+    <div id="brushCursor"></div>
     <div id="loadingOverlay">
         <div class="spinner"></div>
         <div id="loadingText">Loading...</div>
@@ -543,14 +789,57 @@
         <b>WASD</b> pan pivot, <b>Q/E R/F T/G</b> rotate (if mode=Rotate).<br>
         <b>J/L U/O I/K</b> translate (if mode=Translate), <b>+/-</b> scale.
     </div>
-    <div id="cesiumContainer"></div>
+    <div id="viewCube">
+        <div class="title">View Cube</div>
+        <div id="viewCubeGrid">
+            <button class="secondary viewCubeBtn" data-view-cube="top">T</button>
+            <button class="secondary viewCubeBtn" data-view-cube="front">F</button>
+            <button class="secondary viewCubeBtn" data-view-cube="right">R</button>
+            <button class="secondary viewCubeBtn" data-view-cube="left">L</button>
+            <button class="secondary viewCubeBtn" data-view-cube="back">B</button>
+            <button class="secondary viewCubeBtn" data-view-cube="bottom">D</button>
+        </div>
+    </div>
+    <div id="closeModal">
+        <div id="closeModalCard">
+            <div id="closeModalTitle">Unsaved Changes</div>
+            <div id="closeModalText">Do you want to save this project before closing GView?</div>
+            <div class="row" style="margin-bottom:0;">
+                <button id="closeSaveBtn">Save</button>
+                <button id="closeDontSaveBtn" class="warning">Don't Save</button>
+                <button id="closeCancelBtn" class="secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+    <div style="display:none;">
+        <div id="orthoPhotoOverlay"><img id="orthoPhotoImg" alt=""><canvas id="orthoPhotoCanvas"></canvas></div>
+        <input type="file" id="orthoImageInput">
+        <button id="importOrthoBtn"></button>
+        <button id="clearOrthoBtn"></button>
+        <select id="projectionModeSelect"><option value="perspective" selected>Perspective</option></select>
+        <button id="orthoFitBtn"></button>
+        <button id="orthoActualBtn"></button>
+        <input id="orthoZoomInput" type="range" value="1.00">
+        <span id="orthoZoomLabel">1.00x</span>
+        <input id="orthoOpacityInput" type="range" value="100">
+        <span id="orthoOpacityLabel">100%</span>
+        <select id="orthoFitModeSelect"><option value="contain" selected>contain</option></select>
+    </div>
+    <div id="arcgisSceneWrap">
+        <arcgis-scene id="gviewArcgisScene" basemap="satellite" ground="world-elevation">
+            <arcgis-zoom slot="top-left"></arcgis-zoom>
+            <arcgis-navigation-toggle slot="top-left"></arcgis-navigation-toggle>
+            <arcgis-compass slot="top-left"></arcgis-compass>
+        </arcgis-scene>
+    </div>
     <canvas id="renderCanvas" tabindex="0"></canvas>
 
     <script>
         const canvas = document.getElementById("renderCanvas");
-        const cesiumContainer = document.getElementById("cesiumContainer");
+        const arcgisSceneWrapEl = document.getElementById("arcgisSceneWrap");
+        const plyModeControlsEl = document.getElementById("plyModeControls");
         const ui = document.getElementById("ui");
-        const engine = new BABYLON.Engine(canvas, true);
+        const engine = new BABYLON.Engine(canvas, true, { stencil: true, alpha: true, premultipliedAlpha: false });
         const scene = new BABYLON.Scene(engine);
         scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
 
@@ -570,12 +859,23 @@
         let currentSplatMesh = null;
         let targetGlide = null;
         let savedView = null;
+        let plyBasemapEnabled = false;
+        let basemapGeoAnchor = { x: 109073.1499760, y: 6784907.8377495, z: 200.436, scale: 1 };
+        let basemapLocalOrigin = { x: 0, y: 0, z: 0 };
+        let cachedTilesGeoCenter = null;
         let viewerMode = "ply";
-        let cesiumViewer = null;
-        let currentTileset = null;
+        let tilesElevationInputEl = null;
+        let currentOrthoPhotoUrl = "";
         let loadingDepth = 0;
         let currentProjectName = "Untitled";
         let isProjectDirty = false;
+        let geoTiffLoaderPromise = null;
+        let pendingCloseRequest = false;
+        let closeBypassGuard = false;
+        let autosaveTimer = null;
+        let recoveryPromptShown = false;
+        const AUTOSAVE_KEY = "gview.autosave.v1";
+        const AUTOSAVE_MAX_BYTES = 3_000_000;
 
         const loadedModels = [];
         let modelCounter = 0;
@@ -588,6 +888,16 @@
         let isApplyingHistory = false;
         let transformActionActive = false;
         let rightDragState = null;
+        let boxSelectEnabled = false;
+        let boxSelectState = null;
+        let brushSelectEnabled = false;
+        let brushSelectState = null;
+        let brushRadiusPx = 40;
+        let brushMode = "replace";
+        let plyMeasureMode = null;
+        let plyMeasurePoints = [];
+        let plyMeasureMeshes = [];
+        const selectionSets = new Map();
         const defaultCamera = {
             alpha: Math.PI / 2,
             beta: Math.PI / 2,
@@ -597,20 +907,198 @@
 
         let moveSpeed = 10;
         let rotSpeed = 1.4;
-        let dragSensitivity = 0.15;
+        let dragSensitivity = 0.35;
+        let projectionMode = "perspective";
+        let orthoZoomFactor = 1.0;
+        const ORTHO_BASE_HALF_HEIGHT = 10;
         let showGrid = false;
         let showAxes = false;
         const fpsSamples = [];
         const FPS_HISTORY = 70;
 
+        const measureHintTextEl = document.getElementById("measureHintText");
+
+        function setMeasureHint(message) {
+            if (measureHintTextEl) measureHintTextEl.textContent = message;
+            window.gviewMeasureHint?.(message);
+        }
+
+        function clearPlyMeasureGraphics() {
+            plyMeasureMeshes.forEach((m) => m.dispose());
+            plyMeasureMeshes = [];
+            plyMeasurePoints.length = 0;
+        }
+
+        function deactivatePlyMeasureMode() {
+            plyMeasureMode = null;
+            syncPointerButtonsForTools();
+            const distBtn = document.getElementById("measureDistanceBtn");
+            const angBtn = document.getElementById("measureAngleBtn");
+            if (distBtn) distBtn.textContent = "3D Distance";
+            if (angBtn) angBtn.textContent = "Angle (3 clicks)";
+        }
+
+        function pickPlyMeasurePoint() {
+            const predicate = (mesh) => loadedModels.some((m) => m.mesh === mesh || mesh.parent === m.mesh);
+            let pick = scene.pick(scene.pointerX, scene.pointerY, predicate);
+            if (pick?.pickedPoint) return pick.pickedPoint.clone();
+            pick = scene.pick(scene.pointerX, scene.pointerY);
+            if (pick?.pickedPoint) return pick.pickedPoint.clone();
+            const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, BABYLON.Matrix.Identity(), camera);
+            const forward = camera.getForwardRay(1).direction;
+            const plane = BABYLON.Plane.FromPositionAndNormal(camera.target, forward);
+            const dist = ray.intersectsPlane(plane);
+            if (dist === null) return null;
+            return ray.origin.add(ray.direction.scale(dist));
+        }
+
+        function addPlyMeasureMarker(pos) {
+            const s = BABYLON.MeshBuilder.CreateSphere("measurePt", { diameter: 0.2 }, scene);
+            s.position.copyFrom(pos);
+            const mat = new BABYLON.StandardMaterial("measureMat" + plyMeasureMeshes.length, scene);
+            mat.emissiveColor = new BABYLON.Color3(1, 0.55, 0.1);
+            mat.disableLighting = true;
+            s.material = mat;
+            plyMeasureMeshes.push(s);
+        }
+
+        function addPlyMeasureLine(a, b) {
+            const line = BABYLON.MeshBuilder.CreateLines("measureLine", { points: [a, b] }, scene);
+            line.color = new BABYLON.Color3(1, 0.55, 0.1);
+            plyMeasureMeshes.push(line);
+        }
+
+        function addPlyMeasurePolyline(points) {
+            const line = BABYLON.MeshBuilder.CreateLines("measurePoly", { points }, scene);
+            line.color = new BABYLON.Color3(1, 0.55, 0.1);
+            plyMeasureMeshes.push(line);
+        }
+
+        function angleFromThreePoints(a, b, c) {
+            const v1 = { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
+            const v2 = { x: c.x - b.x, y: c.y - b.y, z: c.z - b.z };
+            const d1 = Math.hypot(v1.x, v1.y, v1.z);
+            const d2 = Math.hypot(v2.x, v2.y, v2.z);
+            if (d1 === 0 || d2 === 0) return null;
+            let cos = (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z) / (d1 * d2);
+            cos = Math.min(1, Math.max(-1, cos));
+            return (Math.acos(cos) * 180) / Math.PI;
+        }
+
+        function setPlyMeasureMode(mode) {
+            if (window.GViewTiles?.clearMeasurements) {
+                window.GViewTiles.clearMeasurements().catch(() => {});
+            }
+            clearPlyMeasureGraphics();
+            plyMeasureMode = mode;
+            if (boxSelectEnabled) {
+                boxSelectEnabled = false;
+                boxSelectBtn.textContent = "Box Select: Off";
+            }
+            if (brushSelectEnabled) {
+                brushSelectEnabled = false;
+                brushSelectBtn.textContent = "Brush Select: Off";
+                brushCursorEl.style.display = "none";
+            }
+            syncPointerButtonsForTools();
+            const distBtn = document.getElementById("measureDistanceBtn");
+            const angBtn = document.getElementById("measureAngleBtn");
+            if (mode === "distance") {
+                if (distBtn) distBtn.textContent = "3D Distance (active)";
+                if (angBtn) angBtn.textContent = "Angle (3 clicks)";
+                setMeasureHint("PLY distance: click point A, then point B on the model.");
+            } else if (mode === "angle") {
+                if (angBtn) angBtn.textContent = "Angle (active)";
+                if (distBtn) distBtn.textContent = "3D Distance";
+                setMeasureHint("PLY angle: click A, vertex B (center), then C.");
+            } else {
+                deactivatePlyMeasureMode();
+            }
+        }
+
+        function handlePlyMeasureClick() {
+            const p = pickPlyMeasurePoint();
+            if (!p) {
+                setMeasureHint("No hit. Click directly on the splat model.");
+                return;
+            }
+            plyMeasurePoints.push(p);
+            addPlyMeasureMarker(p);
+            if (plyMeasureMode === "distance") {
+                if (plyMeasurePoints.length === 1) {
+                    setMeasureHint("Point A set. Click point B.");
+                } else if (plyMeasurePoints.length >= 2) {
+                    const a = plyMeasurePoints[0];
+                    const b = plyMeasurePoints[1];
+                    addPlyMeasureLine(a, b);
+                    const dist = BABYLON.Vector3.Distance(a, b);
+                    setMeasureHint("Distance: " + dist.toFixed(3) + " m");
+                    setStatus("Measured distance: " + dist.toFixed(3) + " m");
+                    plyMeasurePoints.length = 0;
+                }
+            } else if (plyMeasureMode === "angle") {
+                if (plyMeasurePoints.length === 1) {
+                    setMeasureHint("Point A set. Click vertex B (angle center).");
+                } else if (plyMeasurePoints.length === 2) {
+                    setMeasureHint("Vertex B set. Click point C.");
+                } else if (plyMeasurePoints.length >= 3) {
+                    const [a, b, c] = plyMeasurePoints;
+                    addPlyMeasurePolyline([a, b, c]);
+                    const deg = angleFromThreePoints(a, b, c);
+                    if (deg != null) {
+                        setMeasureHint("Angle at B: " + deg.toFixed(2) + "°");
+                        setStatus("Measured angle: " + deg.toFixed(2) + "°");
+                    }
+                    plyMeasurePoints.length = 0;
+                }
+            }
+        }
+
+        async function startMeasureDistance() {
+            if (viewerMode === "3dtiles") {
+                deactivatePlyMeasureMode();
+                clearPlyMeasureGraphics();
+                const tiles = await waitForGViewTiles();
+                await tiles.startDistanceMeasure();
+                return;
+            }
+            setPlyMeasureMode("distance");
+            setActiveTab("measure");
+        }
+
+        async function startMeasureAngle() {
+            if (viewerMode === "3dtiles") {
+                deactivatePlyMeasureMode();
+                clearPlyMeasureGraphics();
+                const tiles = await waitForGViewTiles();
+                await tiles.startAngleMeasure();
+                return;
+            }
+            setPlyMeasureMode("angle");
+            setActiveTab("measure");
+        }
+
+        async function clearAllMeasurements() {
+            deactivatePlyMeasureMode();
+            clearPlyMeasureGraphics();
+            if (window.GViewTiles?.clearMeasurements) {
+                await window.GViewTiles.clearMeasurements();
+            }
+            setMeasureHint("Measurements cleared.");
+            setStatus("Measurements cleared.");
+        }
+
         const splatCountValueEl = document.getElementById("splatCountValue");
         const fpsValueEl = document.getElementById("fpsValue");
-        const splatInfoPanel = document.getElementById("splatInfoPanel");
+        const infoModelCountEl = document.getElementById("infoModelCount");
+        const infoActiveModelEl = document.getElementById("infoActiveModel");
         const statusTextEl = document.getElementById("statusText");
         const logPanelEl = document.getElementById("logPanel");
         const loadingOverlayEl = document.getElementById("loadingOverlay");
         const loadingTextEl = document.getElementById("loadingText");
         const dropOverlayEl = document.getElementById("dropOverlay");
+        const selectRectEl = document.getElementById("selectRect");
+        const brushCursorEl = document.getElementById("brushCursor");
         const modelListEl = document.getElementById("modelList");
         const modelRowsEl = document.getElementById("modelRows");
         const layerFilterSelectEl = document.getElementById("layerFilterSelect");
@@ -623,14 +1111,23 @@
         const camSensInput = document.getElementById("camSensInput");
         const zoomSpeedInput = document.getElementById("zoomSpeedInput");
         const dragSensInput = document.getElementById("dragSensInput");
+        const projectionModeSelect = document.getElementById("projectionModeSelect");
+        const orthoZoomInput = document.getElementById("orthoZoomInput");
         const moveSpeedLabel = document.getElementById("moveSpeedLabel");
         const rotSpeedLabel = document.getElementById("rotSpeedLabel");
         const camSensLabel = document.getElementById("camSensLabel");
         const zoomSpeedLabel = document.getElementById("zoomSpeedLabel");
         const dragSensLabel = document.getElementById("dragSensLabel");
+        const orthoZoomLabel = document.getElementById("orthoZoomLabel");
 
         const bgColorInput = document.getElementById("bgColorInput");
         const qualitySelect = document.getElementById("qualitySelect");
+        const orthoPhotoOverlayEl = document.getElementById("orthoPhotoOverlay");
+        const orthoPhotoImgEl = document.getElementById("orthoPhotoImg");
+        const orthoPhotoCanvasEl = document.getElementById("orthoPhotoCanvas");
+        const orthoOpacityInput = document.getElementById("orthoOpacityInput");
+        const orthoOpacityLabel = document.getElementById("orthoOpacityLabel");
+        const orthoFitModeSelect = document.getElementById("orthoFitModeSelect");
         const undoBtn = document.getElementById("undoBtn");
         const redoBtn = document.getElementById("redoBtn");
         const toggleUiBtn = document.getElementById("toggleUiBtn");
@@ -638,6 +1135,7 @@
         const importSourceInputEl = document.getElementById("importSourceInput");
         const tilesLoaderSectionEl = document.getElementById("tilesLoaderSection");
         const tilesetUrlInputEl = document.getElementById("tilesetUrlInput");
+        const tilesStatusTextEl = document.getElementById("tilesStatusText");
         const posXInput = document.getElementById("posXInput");
         const posYInput = document.getElementById("posYInput");
         const posZInput = document.getElementById("posZInput");
@@ -647,6 +1145,44 @@
         const sclXInput = document.getElementById("sclXInput");
         const sclYInput = document.getElementById("sclYInput");
         const sclZInput = document.getElementById("sclZInput");
+        const viewCubeButtons = document.querySelectorAll("[data-view-cube]");
+        const boxSelectBtn = document.getElementById("boxSelectBtn");
+        const brushSelectBtn = document.getElementById("brushSelectBtn");
+        const brushRadiusInput = document.getElementById("brushRadiusInput");
+        const brushRadiusLabel = document.getElementById("brushRadiusLabel");
+        const brushModeSelect = document.getElementById("brushModeSelect");
+        const selectionStatsEl = document.getElementById("selectionStats");
+        const selectAllBtn = document.getElementById("selectAllBtn");
+        const clearSelectionBtn = document.getElementById("clearSelectionBtn");
+        const invertSelectionBtn = document.getElementById("invertSelectionBtn");
+        const removeSelectedBtn = document.getElementById("removeSelectedBtn");
+        const refineRadiusInput = document.getElementById("refineRadiusInput");
+        const refinePassesInput = document.getElementById("refinePassesInput");
+        const refinePreviewText = document.getElementById("refinePreviewText");
+        const previewRefineBtn = document.getElementById("previewRefineBtn");
+        const growSelectionBtn = document.getElementById("growSelectionBtn");
+        const shrinkSelectionBtn = document.getElementById("shrinkSelectionBtn");
+        const smoothSelectionBtn = document.getElementById("smoothSelectionBtn");
+        const selectionSetNameInput = document.getElementById("selectionSetNameInput");
+        const selectionSetSelect = document.getElementById("selectionSetSelect");
+        const saveSelectionSetBtn = document.getElementById("saveSelectionSetBtn");
+        const deleteSelectionSetBtn = document.getElementById("deleteSelectionSetBtn");
+        const applySelectionSetBtn = document.getElementById("applySelectionSetBtn");
+        const exportSelectedBtn = document.getElementById("exportSelectedBtn");
+        const splatScaleInput = document.getElementById("splatScaleInput");
+        const splatScaleLabel = document.getElementById("splatScaleLabel");
+        const applySplatScaleBtn = document.getElementById("applySplatScaleBtn");
+        const resetSplatScaleBtn = document.getElementById("resetSplatScaleBtn");
+        const splatOpacityInput = document.getElementById("splatOpacityInput");
+        const splatOpacityLabel = document.getElementById("splatOpacityLabel");
+        const applySplatOpacityBtn = document.getElementById("applySplatOpacityBtn");
+        const resetSplatOpacityBtn = document.getElementById("resetSplatOpacityBtn");
+        const outlierThresholdInput = document.getElementById("outlierThresholdInput");
+        const cleanupOutliersBtn = document.getElementById("cleanupOutliersBtn");
+        const closeModalEl = document.getElementById("closeModal");
+        const closeSaveBtn = document.getElementById("closeSaveBtn");
+        const closeDontSaveBtn = document.getElementById("closeDontSaveBtn");
+        const closeCancelBtn = document.getElementById("closeCancelBtn");
 
         function logMessage(message, level = "INFO") {
             const stamp = new Date().toLocaleTimeString();
@@ -673,6 +1209,10 @@
         function updateSplatInfoPanel() {
             const n = getLoadedSplatCount(currentSplatMesh);
             splatCountValueEl.textContent = n.toLocaleString();
+            const modelCount = loadedModels.length;
+            infoModelCountEl.textContent = modelCount === 1 ? "1 model" : modelCount + " models";
+            const active = loadedModels.find((m) => m.mesh === currentSplatMesh);
+            infoActiveModelEl.textContent = active ? (active.name || "Model " + active.id) : "None";
         }
 
         function setStatus(message) {
@@ -680,68 +1220,299 @@
             logMessage(message);
         }
 
-        function ensureCesiumViewer() {
-            if (cesiumViewer) return cesiumViewer;
-            cesiumViewer = new Cesium.Viewer("cesiumContainer", {
-                timeline: false,
-                animation: false,
-                baseLayerPicker: false,
-                geocoder: false,
-                homeButton: true,
-                sceneModePicker: false,
-                navigationHelpButton: false,
-                infoBox: false,
-                selectionIndicator: false,
-                fullscreenButton: false,
+        async function waitForGViewTiles(timeoutMs = 30000) {
+            const start = Date.now();
+            while (!window.GViewTiles) {
+                if (Date.now() - start > timeoutMs) {
+                    throw new Error("ArcGIS Gaussian Splat viewer failed to initialize.");
+                }
+                await new Promise((resolve) => setTimeout(resolve, 80));
+            }
+            return window.GViewTiles;
+        }
+
+        function normalizeTilesetUrl(input) {
+            const raw = String(input || "").trim();
+            if (!raw) return "";
+
+            // If user pasted extra text, extract the first full tileset URL.
+            const match = raw.match(/https?:\/\/[^\s]+?tileset\.json(?:\?[^\s#]*)?(?:#[^\s]*)?/i);
+            let candidate = match ? match[0] : raw;
+
+            // Common copy/paste artifact: "...tileset.json/127.0.0.1"
+            candidate = candidate.replace(/(tileset\.json)\/.+$/i, "$1");
+
+            // Keep spaces in folder names valid for URL requests.
+            candidate = candidate.replace(/ /g, "%20");
+
+            // Allow "127.0.0.1:8080/tileset.json" (without protocol).
+            if (!/^https?:\/\//i.test(candidate)) {
+                candidate = "http://" + candidate;
+            }
+
+            try {
+                const parsed = new URL(candidate);
+                const lowerPath = parsed.pathname.toLowerCase();
+                if (!lowerPath.endsWith("tileset.json")) {
+                    parsed.pathname = parsed.pathname.replace(/\/+$/, "") + "/tileset.json";
+                }
+                return parsed.toString();
+            } catch (_) {
+                return "";
+            }
+        }
+
+        async function preflightTilesetUrl(url) {
+            let response;
+            try {
+                response = await fetch(url, { method: "GET", cache: "no-store" });
+            } catch (err) {
+                throw new Error("Cannot reach URL. Check server/CORS. " + (err?.message || String(err)));
+            }
+            if (!response.ok) {
+                throw new Error("HTTP " + response.status + " " + response.statusText);
+            }
+            let json;
+            try {
+                json = await response.json();
+            } catch (err) {
+                throw new Error("URL is reachable but not valid JSON.");
+            }
+            if (!json || !json.root) {
+                throw new Error("Invalid tileset.json: missing 'root'.");
+            }
+        }
+
+        function setTilesStatus(message) {
+            if (tilesStatusTextEl) tilesStatusTextEl.textContent = message;
+        }
+
+        function applyPlyBasemapVisuals() {
+            const on = viewerMode === "ply" && plyBasemapEnabled;
+            arcgisSceneWrapEl.classList.toggle("active", viewerMode === "3dtiles" || on);
+            arcgisSceneWrapEl.classList.toggle("backdrop", on);
+            canvas.classList.toggle("ply-basemap-on", on);
+            if (on) {
+                scene.clearColor = new BABYLON.Color4(0, 0, 0, 0);
+            } else if (viewerMode === "ply") {
+                scene.clearColor = hexToColor4(bgColorInput.value);
+            }
+        }
+
+        function updateBasemapAlignmentFromMesh(mesh) {
+            if (!mesh) return;
+            const center = mesh.getBoundingInfo().boundingBox.centerWorld;
+            basemapLocalOrigin = { x: center.x, y: center.y, z: center.z };
+        }
+
+        function updateBasemapAlignmentFromActiveModel() {
+            if (currentSplatMesh) updateBasemapAlignmentFromMesh(currentSplatMesh);
+        }
+
+        async function ensureBasemapGeoAnchor() {
+            const isValidWebMercator = (geo) => geo && (Math.abs(geo.x) > 10000 || Math.abs(geo.y) > 10000);
+            if (cachedTilesGeoCenter && !isValidWebMercator(cachedTilesGeoCenter)) {
+                cachedTilesGeoCenter = null;
+            }
+            const fromLayer = window.GViewTiles?.getLayerGeoCenter
+                ? await window.GViewTiles.getLayerGeoCenter()
+                : null;
+            if (fromLayer && isValidWebMercator(fromLayer)) {
+                basemapGeoAnchor = fromLayer;
+                cachedTilesGeoCenter = fromLayer;
+                return;
+            }
+            if (cachedTilesGeoCenter && isValidWebMercator(cachedTilesGeoCenter)) {
+                basemapGeoAnchor = { ...cachedTilesGeoCenter };
+                return;
+            }
+            const tileUrl = (tilesetUrlInputEl?.value || "").trim();
+            if (tileUrl && window.GViewTiles?.fetchGeoCenterFromTileset) {
+                try {
+                    const fetched = await window.GViewTiles.fetchGeoCenterFromTileset(tileUrl);
+                    if (fetched && isValidWebMercator(fetched)) {
+                        cachedTilesGeoCenter = fetched;
+                        basemapGeoAnchor = { ...fetched };
+                        return;
+                    }
+                } catch (_) {}
+            }
+            basemapGeoAnchor = {
+                x: 109073.1499760,
+                y: 6784907.8377495,
+                z: 200.436,
+                scale: 1,
+                spatialReference: { wkid: 3857 },
+            };
+        }
+
+        async function alignPlyBasemapToModel() {
+            updateBasemapAlignmentFromActiveModel();
+            await ensureBasemapGeoAnchor();
+            syncPlyBasemapCamera();
+            const mesh = currentSplatMesh;
+            const geo = basemapGeoAnchor;
+            const local = basemapLocalOrigin;
+            setStatus("Basemap aligned: model center maps to geo (" + geo.x.toFixed(1) + ", " + geo.y.toFixed(1) + ").");
+            logMessage(
+                "Basemap local origin (" + local.x.toFixed(2) + ", " + local.y.toFixed(2) + ", " + local.z.toFixed(2) +
+                ") -> geo WM (" + geo.x.toFixed(1) + ", " + geo.y.toFixed(1) + ", " + (geo.z ?? 0).toFixed(1) + ")",
+                "INFO"
+            );
+            if (!mesh) logMessage("No active model — geo anchor updated only.", "WARN");
+        }
+
+        function syncPlyBasemapCamera() {
+            if (!plyBasemapEnabled || viewerMode !== "ply" || !window.GViewTiles) return;
+            window.GViewTiles.syncBackdropCamera({
+                target: { x: camera.target.x, y: camera.target.y, z: camera.target.z },
+                localOrigin: { ...basemapLocalOrigin },
+                alpha: camera.alpha,
+                beta: camera.beta,
+                radius: camera.radius,
+                anchor: { ...basemapGeoAnchor },
             });
-            return cesiumViewer;
+        }
+
+        async function setPlyBasemapEnabled(value) {
+            plyBasemapEnabled = Boolean(value);
+            const btn = document.getElementById("togglePlyBasemapBtn");
+            if (btn) btn.textContent = plyBasemapEnabled ? "Satellite Basemap On" : "Satellite Basemap Off";
+            applyPlyBasemapVisuals();
+            if (plyBasemapEnabled && viewerMode === "ply") {
+                try {
+                    const tiles = await waitForGViewTiles();
+                    updateBasemapAlignmentFromActiveModel();
+                    await ensureBasemapGeoAnchor();
+                    await tiles.enableBasemapBackdrop();
+                    tiles.setActive(true);
+                    syncPlyBasemapCamera();
+                    setStatus("PLY satellite basemap enabled.");
+                } catch (err) {
+                    plyBasemapEnabled = false;
+                    applyPlyBasemapVisuals();
+                    if (btn) btn.textContent = "Satellite Basemap Off";
+                    setStatus("PLY basemap failed: " + (err?.message || String(err)));
+                    return;
+                }
+            } else if (window.GViewTiles) {
+                await window.GViewTiles.disableBasemapBackdrop();
+                if (viewerMode !== "3dtiles") {
+                    arcgisSceneWrapEl.classList.remove("active", "backdrop");
+                }
+                if (!plyBasemapEnabled) setStatus("PLY satellite basemap disabled.");
+            }
+            markDirty(true);
         }
 
         async function load3DTilesFromUrl(url) {
-            if (!url) {
+            const normalizedUrl = normalizeTilesetUrl(url);
+            if (!normalizedUrl) {
                 setStatus("Enter a 3D tileset URL first.");
                 return;
             }
-            const viewer = ensureCesiumViewer();
-            showLoading("Loading 3D Tiles...");
+            tilesetUrlInputEl.value = normalizedUrl;
+            if (viewerMode !== "3dtiles") {
+                switchViewerMode("3dtiles");
+            }
+            showLoading("Loading Gaussian Splat 3D Tiles...");
             try {
-                if (currentTileset) {
-                    viewer.scene.primitives.remove(currentTileset);
-                    currentTileset = null;
-                }
-                currentTileset = await Cesium.Cesium3DTileset.fromUrl(url);
-                viewer.scene.primitives.add(currentTileset);
-                await viewer.zoomTo(currentTileset);
-                setStatus("3D Tiles loaded.");
+                await preflightTilesetUrl(normalizedUrl);
+                await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                const tiles = await waitForGViewTiles();
+                await tiles.ensureReady();
+                tiles.setActive(true);
+                await new Promise((resolve) => setTimeout(resolve, 120));
+                const elevationOffset = Number(tilesElevationInputEl?.value);
+                await tiles.loadTileset(normalizedUrl, {
+                    elevationOffset: Number.isFinite(elevationOffset) ? elevationOffset : 10,
+                });
+                tiles.setActive(true);
+                setTilesStatus(tiles.getStatus ? tiles.getStatus() : "Tileset loaded.");
+                setStatus("3D Tiles Gaussian splat loaded.");
+                markDirty(true);
             } catch (err) {
                 console.error(err);
-                setStatus("Failed to load 3D Tiles: " + (err.message || String(err)));
+                const reason = err?.message || String(err);
+                setStatus("Failed to load 3D Tiles. " + reason);
+                logMessage("3D Tiles URL: " + normalizedUrl, "ERROR");
+                logMessage("3D Tiles load failed: " + reason, "ERROR");
             } finally {
                 hideLoading();
             }
         }
 
-        function clear3DTiles() {
-            if (!cesiumViewer || !currentTileset) {
-                setStatus("No 3D Tiles loaded.");
-                return;
+        async function clear3DTiles() {
+            try {
+                if (!window.GViewTiles) {
+                    setStatus("No 3D Tiles loaded.");
+                    return;
+                }
+                await window.GViewTiles.clearTileset();
+                setStatus("3D Tiles cleared.");
+                markDirty(true);
+            } catch (err) {
+                setStatus("Failed to clear 3D Tiles. " + (err?.message || String(err)));
             }
-            cesiumViewer.scene.primitives.remove(currentTileset);
-            currentTileset = null;
-            setStatus("3D Tiles cleared.");
         }
 
         function switchViewerMode(mode) {
             viewerMode = mode;
+            deactivatePlyMeasureMode();
+            clearPlyMeasureGraphics();
+            if (window.GViewTiles?.clearMeasurements) {
+                window.GViewTiles.clearMeasurements().catch(() => {});
+            }
             const isPly = mode === "ply";
+            const isTiles = mode === "3dtiles";
             viewerModeSelectEl.value = mode;
             canvas.style.display = isPly ? "block" : "none";
-            cesiumContainer.style.display = isPly ? "none" : "block";
-            splatInfoPanel.style.display = isPly ? "block" : "none";
+            canvas.style.pointerEvents = isPly ? "auto" : "none";
+            plyModeControlsEl.style.display = isPly ? "block" : "none";
+            tilesLoaderSectionEl.style.display = isTiles ? "block" : "none";
             dropOverlayEl.style.display = "none";
-            tilesLoaderSectionEl.style.display = isPly ? "none" : "block";
-            setStatus(isPly ? "PLY viewer mode." : "3D Tiles viewer mode.");
-            if (!isPly) ensureCesiumViewer();
+            const helpPanelEl = document.getElementById("helpPanel");
+            const viewCubeEl = document.getElementById("viewCube");
+            const plyBasemapHintEl = document.getElementById("plyBasemapHint");
+            const togglePlyBasemapBtn = document.getElementById("togglePlyBasemapBtn");
+            if (helpPanelEl) helpPanelEl.style.display = isPly ? "block" : "none";
+            if (viewCubeEl) viewCubeEl.style.display = isPly ? "block" : "none";
+            if (plyBasemapHintEl) plyBasemapHintEl.style.display = isPly ? "block" : "none";
+            if (togglePlyBasemapBtn) togglePlyBasemapBtn.style.display = isPly ? "block" : "none";
+            if (isTiles) {
+                arcgisSceneWrapEl.classList.remove("backdrop");
+                arcgisSceneWrapEl.classList.add("active");
+                canvas.classList.remove("ply-basemap-on");
+                scene.clearColor = hexToColor4(bgColorInput.value);
+                if (window.GViewTiles) {
+                    window.GViewTiles.setBackdropMode(false);
+                    window.GViewTiles.setActive(true);
+                    window.GViewTiles.ensureReady().then(() => {
+                        window.GViewTiles.setActive(true);
+                    }).catch((err) => {
+                        logMessage("ArcGIS scene init: " + (err?.message || String(err)), "WARN");
+                    });
+                }
+            } else if (isPly) {
+                applyPlyBasemapVisuals();
+                if (plyBasemapEnabled && window.GViewTiles) {
+                    window.GViewTiles.setBackdropMode(true);
+                    window.GViewTiles.ensureReady().then(async (tiles) => {
+                        await tiles.enableBasemapBackdrop();
+                        tiles.setActive(true);
+                        syncPlyBasemapCamera();
+                    }).catch((err) => {
+                        logMessage("PLY basemap init: " + (err?.message || String(err)), "WARN");
+                    });
+                } else {
+                    arcgisSceneWrapEl.classList.remove("active", "backdrop");
+                    if (window.GViewTiles) {
+                        window.GViewTiles.disableBasemapBackdrop();
+                        window.GViewTiles.setActive(false);
+                    }
+                }
+            }
+            setStatus(isPly ? "PLY viewer mode." : isTiles ? "3D Tiles Gaussian Splat mode." : "Viewer mode changed.");
             engine.resize();
         }
 
@@ -753,6 +1524,162 @@
         function markDirty(value = true) {
             isProjectDirty = value;
             updateProjectTitleAndStatusSuffix();
+            if (isProjectDirty) scheduleAutosave();
+            else localStorage.removeItem(AUTOSAVE_KEY);
+        }
+
+        function getRecoverySnapshot() {
+            return {
+                version: 1,
+                savedAt: new Date().toISOString(),
+                viewerMode,
+                importSource: (importSourceInputEl.value || "").trim(),
+                tilesetUrl: (tilesetUrlInputEl.value || "").trim(),
+                activeModelId: currentSplatMesh ? (loadedModels.find((m) => m.mesh === currentSplatMesh)?.id ?? null) : null,
+                app: {
+                    currentProjectName,
+                    bgColor: bgColorInput.value,
+                    quality: qualitySelect.value,
+                    moveSpeed,
+                    rotSpeed,
+                    cameraSensitivity: camera.angularSensibilityX,
+                    zoomSpeed: Number(zoomSpeedInput.value),
+                    dragSensitivity,
+                    showGrid,
+                    showAxes,
+                    plyBasemapEnabled,
+                },
+                camera: {
+                    alpha: camera.alpha,
+                    beta: camera.beta,
+                    radius: camera.radius,
+                    target: cloneVec(camera.target),
+                },
+                models: loadedModels.map((m) => ({
+                    id: m.id,
+                    name: m.name,
+                    dataUrl: m.dataUrl || null,
+                    urlOnly: !m.dataUrl,
+                    layer: m.layer || "Default",
+                    locked: Boolean(m.locked),
+                    enabled: m.mesh.isEnabled(),
+                    position: cloneVec(m.mesh.position),
+                    rotation: cloneVec(m.mesh.rotation),
+                    scaling: cloneVec(m.mesh.scaling),
+                })),
+            };
+        }
+
+        function saveRecoverySnapshot(reason = "autosave") {
+            try {
+                const payload = getRecoverySnapshot();
+                const text = JSON.stringify(payload);
+                if (text.length > AUTOSAVE_MAX_BYTES) {
+                    logMessage("Autosave skipped: project is too large for browser storage.", "WARN");
+                    return;
+                }
+                localStorage.setItem(AUTOSAVE_KEY, text);
+                if (reason !== "autosave") {
+                    logMessage("Recovery snapshot saved (" + reason + ").", "INFO");
+                }
+            } catch (err) {
+                logMessage("Autosave failed: " + (err.message || String(err)), "WARN");
+            }
+        }
+
+        function scheduleAutosave() {
+            if (autosaveTimer) clearTimeout(autosaveTimer);
+            autosaveTimer = setTimeout(() => {
+                autosaveTimer = null;
+                if (!isProjectDirty) return;
+                saveRecoverySnapshot("autosave");
+            }, 1100);
+        }
+
+        async function tryRestoreRecoverySnapshot() {
+            if (recoveryPromptShown) return;
+            recoveryPromptShown = true;
+            const raw = localStorage.getItem(AUTOSAVE_KEY);
+            if (!raw) return;
+            let data;
+            try {
+                data = JSON.parse(raw);
+            } catch (_) {
+                localStorage.removeItem(AUTOSAVE_KEY);
+                return;
+            }
+            const savedAt = data?.savedAt ? new Date(data.savedAt).toLocaleString() : "recent session";
+            const shouldRestore = window.confirm("Recovered unsaved session from " + savedAt + ". Restore it now?");
+            if (!shouldRestore) return;
+            await applyRecoverySnapshot(data);
+            setStatus("Recovered unsaved session.");
+            markDirty(true);
+        }
+
+        async function applyRecoverySnapshot(snapshot) {
+            if (!snapshot || !Array.isArray(snapshot.models)) return;
+            clearAllModels();
+            if (snapshot.app) {
+                currentProjectName = snapshot.app.currentProjectName || "Recovered";
+                bgColorInput.value = snapshot.app.bgColor || "#000000";
+                scene.clearColor = hexToColor4(bgColorInput.value);
+                qualitySelect.value = snapshot.app.quality || "high";
+                applyQualityPreset(qualitySelect.value);
+                moveSpeed = Number(snapshot.app.moveSpeed || 10);
+                rotSpeed = Number(snapshot.app.rotSpeed || 1.4);
+                moveSpeedInput.value = String(moveSpeed);
+                rotSpeedInput.value = String(rotSpeed);
+                moveSpeedLabel.textContent = moveSpeed.toFixed(1);
+                rotSpeedLabel.textContent = rotSpeed.toFixed(2);
+                const sens = Number(snapshot.app.cameraSensitivity || 3000);
+                camSensInput.value = String(sens);
+                camera.angularSensibilityX = sens;
+                camera.angularSensibilityY = sens;
+                camSensLabel.textContent = String(sens);
+                const zs = Number(snapshot.app.zoomSpeed || 20);
+                zoomSpeedInput.value = String(zs);
+                zoomSpeedLabel.textContent = String(zs);
+                camera.wheelPrecision = 21 - zs;
+                dragSensitivity = Number(snapshot.app.dragSensitivity || 0.35);
+                dragSensInput.value = String(dragSensitivity);
+                dragSensLabel.textContent = dragSensitivity.toFixed(2);
+                setGridVisible(Boolean(snapshot.app.showGrid));
+                setAxesVisible(Boolean(snapshot.app.showAxes));
+                if (snapshot.app.plyBasemapEnabled) {
+                    await setPlyBasemapEnabled(true);
+                }
+            }
+            if (snapshot.camera?.target) {
+                camera.alpha = Number(snapshot.camera.alpha ?? camera.alpha);
+                camera.beta = Number(snapshot.camera.beta ?? camera.beta);
+                camera.radius = Number(snapshot.camera.radius ?? camera.radius);
+                camera.setTarget(new BABYLON.Vector3(snapshot.camera.target.x, snapshot.camera.target.y, snapshot.camera.target.z), false, false, true);
+            }
+            for (const item of snapshot.models) {
+                if (!item.dataUrl) continue;
+                const blob = await fetch(item.dataUrl).then((r) => r.blob());
+                const file = new File([blob], item.name || "RecoveredModel.ply", { type: "application/octet-stream" });
+                await loadOneFile(file, { silentStatus: true, embeddedDataUrl: item.dataUrl });
+                const loaded = loadedModels[loadedModels.length - 1];
+                if (!loaded) continue;
+                loaded.layer = item.layer || "Default";
+                loaded.locked = Boolean(item.locked);
+                loaded.mesh.setEnabled(item.enabled !== false);
+                if (item.position) loaded.mesh.position.copyFromFloats(item.position.x, item.position.y, item.position.z);
+                if (item.rotation) loaded.mesh.rotation.copyFromFloats(item.rotation.x, item.rotation.y, item.rotation.z);
+                if (item.scaling) loaded.mesh.scaling.copyFromFloats(item.scaling.x, item.scaling.y, item.scaling.z);
+            }
+            refreshLayerFilterOptions();
+            refreshModelList();
+            if (snapshot.activeModelId != null) setActiveModelById(Number(snapshot.activeModelId));
+            importSourceInputEl.value = snapshot.importSource || "";
+            tilesetUrlInputEl.value = snapshot.tilesetUrl || "";
+            if (snapshot.viewerMode === "3dtiles") {
+                switchViewerMode("3dtiles");
+                if (tilesetUrlInputEl.value) {
+                    await load3DTilesFromUrl(tilesetUrlInputEl.value);
+                }
+            }
         }
 
         function showLoading(message) {
@@ -770,6 +1697,75 @@
         function hexToColor4(hex) {
             const c = BABYLON.Color3.FromHexString(hex);
             return new BABYLON.Color4(c.r, c.g, c.b, 1);
+        }
+
+        function updateOrthoFrustum() {
+            if (projectionMode !== "ortho") return;
+            const h = Math.max(0.01, ORTHO_BASE_HALF_HEIGHT / Math.max(orthoZoomFactor, 0.01));
+            const aspect = Math.max(0.01, engine.getRenderWidth() / Math.max(engine.getRenderHeight(), 1));
+            camera.orthoTop = h;
+            camera.orthoBottom = -h;
+            camera.orthoLeft = -h * aspect;
+            camera.orthoRight = h * aspect;
+        }
+
+        function setOrthoZoomFactor(value, updateInput = true) {
+            orthoZoomFactor = Math.min(8.0, Math.max(0.10, value));
+            orthoZoomLabel.textContent = orthoZoomFactor.toFixed(2) + "x";
+            if (updateInput) orthoZoomInput.value = String(orthoZoomFactor.toFixed(2));
+            updateOrthoFrustum();
+            if (projectionMode === "ortho") {
+                setStatus("Ortho zoom: " + orthoZoomFactor.toFixed(2) + "x");
+            }
+        }
+
+        function fitOrthoToActiveModel() {
+            if (!currentSplatMesh) {
+                setOrthoZoomFactor(1.0);
+                return;
+            }
+            const info = currentSplatMesh.getBoundingInfo();
+            const ext = info.boundingBox.extendSizeWorld;
+            const maxSpan = Math.max(ext.x, ext.y, ext.z, 0.01) * 2.6;
+            const targetZoom = Math.max(0.10, Math.min(8.0, ORTHO_BASE_HALF_HEIGHT / maxSpan));
+            setOrthoZoomFactor(targetZoom);
+            camera.setTarget(info.boundingBox.centerWorld, false, false, true);
+            setStatus("Ortho fit applied.");
+        }
+
+        function setProjectionMode(mode) {
+            projectionMode = mode === "ortho" ? "ortho" : "perspective";
+            projectionModeSelect.value = projectionMode;
+            const pointers = camera.inputs?.attached?.pointers;
+            if (projectionMode === "ortho") {
+                camera.mode = BABYLON.Camera.ORTHOGRAPHIC_CAMERA;
+                if (pointers) pointers.buttons = [1];
+                updateOrthoFrustum();
+                setStatus("Projection: Orthographic");
+            } else {
+                camera.mode = BABYLON.Camera.PERSPECTIVE_CAMERA;
+                if (pointers) pointers.buttons = [0, 1];
+                setStatus("Projection: Perspective");
+            }
+        }
+
+        function syncPointerButtonsForTools() {
+            const pointers = camera.inputs?.attached?.pointers;
+            if (!pointers) return;
+            // Reserve left mouse for brush painting when brush tool is active.
+            if (brushSelectEnabled) {
+                pointers.buttons = [1];
+                return;
+            }
+            if (plyMeasureMode) {
+                pointers.buttons = [1];
+                return;
+            }
+            if (projectionMode === "ortho") {
+                pointers.buttons = [1];
+            } else {
+                pointers.buttons = [0, 1];
+            }
         }
 
         function refreshModelList() {
@@ -860,6 +1856,503 @@
             return activeId != null ? [activeId] : [];
         }
 
+        function getSelectedModels() {
+            const ids = new Set(getSelectedModelIds());
+            const selected = loadedModels.filter((m) => ids.has(m.id));
+            if (selected.length) return selected;
+            const active = getActiveModelItem();
+            return active ? [active] : [];
+        }
+
+        function getActiveModelItem() {
+            if (!currentSplatMesh) return null;
+            return loadedModels.find((m) => m.mesh === currentSplatMesh) || null;
+        }
+
+        function syncGaussianSplatMesh(model) {
+            if (!model?.mesh || !model.splatEdit?.buffer) return;
+            if (typeof model.mesh.updateData === "function") {
+                try {
+                    model.mesh.updateData(model.splatEdit.buffer, undefined, { flipY: false });
+                } catch (_) {
+                    try { model.mesh.updateData(model.splatEdit.buffer); } catch (_) {}
+                }
+            }
+        }
+
+        function clearSplatSelectionPreview(model) {
+            const data = model?.splatEdit;
+            if (!data || data.mode !== "gs" || !data.buffer) return;
+            const u8 = new Uint8Array(data.buffer);
+            for (let i = 0; i < data.splatCount; i++) {
+                const ci = i * 4;
+                const off = i * 32 + 24;
+                u8[off + 0] = data.originalColors[ci + 0];
+                u8[off + 1] = data.originalColors[ci + 1];
+                u8[off + 2] = data.originalColors[ci + 2];
+                u8[off + 3] = data.originalColors[ci + 3];
+            }
+            syncGaussianSplatMesh(model);
+        }
+
+        function applySplatSelectionPreview(model) {
+            const data = model?.splatEdit;
+            if (!data || data.mode !== "gs" || !data.buffer) return;
+            const u8 = new Uint8Array(data.buffer);
+            for (let i = 0; i < data.splatCount; i++) {
+                const ci = i * 4;
+                const off = i * 32 + 24;
+                const r = data.originalColors[ci + 0];
+                const g = data.originalColors[ci + 1];
+                const b = data.originalColors[ci + 2];
+                const a = data.originalColors[ci + 3];
+                if (data.selectedMask[i]) {
+                    // Strong cyan highlight while keeping alpha visible.
+                    u8[off + 0] = Math.round(r * 0.35);
+                    u8[off + 1] = Math.min(255, Math.round(g * 0.4 + 155));
+                    u8[off + 2] = Math.min(255, Math.round(b * 0.4 + 155));
+                    u8[off + 3] = Math.max(a, 96);
+                } else {
+                    u8[off + 0] = r;
+                    u8[off + 1] = g;
+                    u8[off + 2] = b;
+                    u8[off + 3] = a;
+                }
+            }
+            syncGaussianSplatMesh(model);
+        }
+
+        function ensureSplatEditData(model) {
+            if (!model?.mesh) return null;
+            if (model.splatEditUnsupported) return null;
+            if (model.splatEdit) return model.splatEdit;
+            const className = model.mesh.getClassName ? String(model.mesh.getClassName()) : "";
+            const isGaussianMesh = /GaussianSplatting/i.test(className);
+            if (isGaussianMesh && model.mesh.splatsData instanceof ArrayBuffer && model.mesh.splatsData.byteLength >= 32) {
+                const buffer = model.mesh.splatsData.slice(0);
+                const splatCount = Math.floor(buffer.byteLength / 32);
+                const u8 = new Uint8Array(buffer);
+                const originalColors = new Uint8Array(splatCount * 4);
+                for (let i = 0; i < splatCount; i++) {
+                    const ci = i * 4;
+                    const off = i * 32 + 24;
+                    originalColors[ci + 0] = u8[off + 0];
+                    originalColors[ci + 1] = u8[off + 1];
+                    originalColors[ci + 2] = u8[off + 2];
+                    originalColors[ci + 3] = u8[off + 3];
+                }
+                model.splatEdit = {
+                    mode: "gs",
+                    buffer,
+                    splatCount,
+                    selectedMask: new Uint8Array(splatCount),
+                    originalColors,
+                };
+                return model.splatEdit;
+            }
+            if (isGaussianMesh) {
+                // Avoid fake "vertex mode" on gaussian meshes. If splatsData is unavailable,
+                // point-level edits are not reliably possible in this runtime path.
+                model.splatEditUnsupported = true;
+                return null;
+            }
+            const pos = model.mesh.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+            if (!pos || pos.length < 3) return null;
+            if (model.mesh.getClassName && model.mesh.getClassName().includes("GaussianSplatting")) {
+                // Babylon loader often uploads splats to GPU-only buffers unless keepInRam is enabled.
+                // In that case point-level editing is not directly available from this app runtime.
+                const hasDirectCpuAccess = Boolean(pos && pos.length >= 3);
+                if (!hasDirectCpuAccess) {
+                    model.splatEditUnsupported = true;
+                    return null;
+                }
+            }
+            const vertexCount = Math.floor(pos.length / 3);
+            let colors = model.mesh.getVerticesData(BABYLON.VertexBuffer.ColorKind);
+            if (!colors || colors.length !== vertexCount * 4) {
+                colors = new Float32Array(vertexCount * 4);
+                for (let i = 0; i < vertexCount; i++) {
+                    const o = i * 4;
+                    colors[o] = 1;
+                    colors[o + 1] = 1;
+                    colors[o + 2] = 1;
+                    colors[o + 3] = 1;
+                }
+                model.mesh.setVerticesData(BABYLON.VertexBuffer.ColorKind, colors, true);
+            }
+            model.splatEdit = {
+                mode: "vertex",
+                basePositions: new Float32Array(pos),
+                selectedMask: new Uint8Array(vertexCount),
+                vertexCount,
+                alpha: 1,
+            };
+            return model.splatEdit;
+        }
+
+        function selectedSplatCount(model) {
+            const data = model?.splatEdit;
+            if (!data) return 0;
+            const count = data.mode === "gs" ? data.splatCount : data.vertexCount;
+            let n = 0;
+            for (let i = 0; i < count; i++) if (data.selectedMask[i]) n += 1;
+            return n;
+        }
+
+        function setModelSelectionByIds(ids, append = false) {
+            const idSet = new Set(ids);
+            if (!append) {
+                [...modelListEl.options].forEach((opt) => { opt.selected = false; });
+            }
+            [...modelListEl.options].forEach((opt) => {
+                const id = Number(opt.value);
+                if (idSet.has(id)) opt.selected = true;
+            });
+            const first = ids[0];
+            if (Number.isFinite(first)) setActiveModelById(first);
+            updateSelectionStats();
+        }
+
+        function updateSelectionStats() {
+            const selected = getSelectedModelIds().length;
+            selectionStatsEl.textContent = "Selected: " + selected + " / " + loadedModels.length;
+        }
+
+        function selectAllModels() {
+            const ids = loadedModels.map((m) => m.id);
+            setModelSelectionByIds(ids, false);
+            refreshModelList();
+            setStatus("Selected all models.");
+        }
+
+        function clearSelection() {
+            setModelSelectionByIds([], false);
+            refreshModelList();
+            setStatus("Selection cleared.");
+        }
+
+        function invertSelection() {
+            const selected = new Set(getSelectedModelIds());
+            const next = loadedModels.map((m) => m.id).filter((id) => !selected.has(id));
+            setModelSelectionByIds(next, false);
+            refreshModelList();
+            setStatus("Selection inverted.");
+        }
+
+        function removeSelectedModels() {
+            const ids = getSelectedModelIds();
+            if (!ids.length) {
+                setStatus("No selected models to delete.");
+                return;
+            }
+            for (const id of ids) removeModelById(id);
+            pushHistory("Delete selected models");
+            updateSelectionStats();
+            setStatus("Deleted " + ids.length + " selected model(s).");
+        }
+
+        function refreshSelectionSetOptions() {
+            const current = selectionSetSelect.value;
+            selectionSetSelect.innerHTML = "";
+            const none = document.createElement("option");
+            none.value = "";
+            none.textContent = "(none)";
+            selectionSetSelect.appendChild(none);
+            for (const key of selectionSets.keys()) {
+                const opt = document.createElement("option");
+                opt.value = key;
+                opt.textContent = key;
+                selectionSetSelect.appendChild(opt);
+            }
+            if (current && selectionSets.has(current)) selectionSetSelect.value = current;
+        }
+
+        function saveSelectionSet() {
+            const name = (selectionSetNameInput.value || "").trim();
+            if (!name) {
+                setStatus("Enter selection set name.");
+                return;
+            }
+            const ids = getSelectedModelIds();
+            if (!ids.length) {
+                setStatus("No selected models to save.");
+                return;
+            }
+            selectionSets.set(name, ids);
+            refreshSelectionSetOptions();
+            selectionSetSelect.value = name;
+            setStatus("Saved selection set: " + name);
+        }
+
+        function applySelectionSet() {
+            const name = selectionSetSelect.value;
+            if (!name || !selectionSets.has(name)) {
+                setStatus("Choose a saved selection set.");
+                return;
+            }
+            const ids = selectionSets.get(name).filter((id) => loadedModels.some((m) => m.id === id));
+            setModelSelectionByIds(ids, false);
+            refreshModelList();
+            setStatus("Applied selection set: " + name);
+        }
+
+        function deleteSelectionSet() {
+            const name = selectionSetSelect.value || (selectionSetNameInput.value || "").trim();
+            if (!name || !selectionSets.has(name)) {
+                setStatus("Selection set not found.");
+                return;
+            }
+            selectionSets.delete(name);
+            refreshSelectionSetOptions();
+            setStatus("Deleted selection set: " + name);
+        }
+
+        function getModelCenter(model) {
+            return model.mesh.getBoundingInfo().boundingBox.centerWorld;
+        }
+
+        function parseRefineRadius() {
+            const r = Number(refineRadiusInput.value);
+            if (!Number.isFinite(r) || r <= 0) return null;
+            return r;
+        }
+
+        function parseRefinePasses() {
+            const p = Math.max(1, Math.min(20, Math.round(Number(refinePassesInput.value) || 1)));
+            refinePassesInput.value = String(p);
+            return p;
+        }
+
+        function buildCenterMap() {
+            const map = new Map();
+            for (const m of loadedModels) map.set(m.id, getModelCenter(m));
+            return map;
+        }
+
+        function growSelectionPass(selected, radius, centers) {
+            const next = new Set(selected);
+            const seeds = loadedModels.filter((m) => selected.has(m.id)).map((m) => centers.get(m.id));
+            for (const m of loadedModels) {
+                if (next.has(m.id)) continue;
+                const c = centers.get(m.id);
+                for (const s of seeds) {
+                    if (BABYLON.Vector3.Distance(c, s) <= radius) {
+                        next.add(m.id);
+                        break;
+                    }
+                }
+            }
+            return next;
+        }
+
+        function shrinkSelectionPass(selected, radius, centers) {
+            const selectedModels = loadedModels.filter((m) => selected.has(m.id));
+            const kept = new Set();
+            for (const m of selectedModels) {
+                const c = centers.get(m.id);
+                let neighbors = 0;
+                for (const n of selectedModels) {
+                    if (n.id === m.id) continue;
+                    const nc = centers.get(n.id);
+                    if (BABYLON.Vector3.Distance(c, nc) <= radius) {
+                        neighbors += 1;
+                        if (neighbors >= 1) break;
+                    }
+                }
+                if (neighbors >= 1) kept.add(m.id);
+            }
+            return kept;
+        }
+
+        function smoothSelectionPass(selected, radius, centers) {
+            const next = new Set(selected);
+            for (const m of loadedModels) {
+                const cm = centers.get(m.id);
+                let nearCount = 0;
+                let nearSel = 0;
+                for (const n of loadedModels) {
+                    if (n.id === m.id) continue;
+                    const cn = centers.get(n.id);
+                    if (BABYLON.Vector3.Distance(cm, cn) <= radius) {
+                        nearCount += 1;
+                        if (selected.has(n.id)) nearSel += 1;
+                    }
+                }
+                if (!nearCount) continue;
+                const ratio = nearSel / nearCount;
+                if (ratio >= 0.5) next.add(m.id);
+                else if (ratio <= 0.2) next.delete(m.id);
+            }
+            return next;
+        }
+
+        function runRefine(mode, initialSelected, radius, passes) {
+            const centers = buildCenterMap();
+            let current = new Set(initialSelected);
+            for (let i = 0; i < passes; i++) {
+                if (mode === "grow") current = growSelectionPass(current, radius, centers);
+                else if (mode === "shrink") current = shrinkSelectionPass(current, radius, centers);
+                else current = smoothSelectionPass(current, radius, centers);
+            }
+            return current;
+        }
+
+        function growSelection() {
+            const radius = parseRefineRadius();
+            if (!radius) {
+                setStatus("Refine radius must be > 0.");
+                return;
+            }
+            const selected = new Set(getSelectedModelIds());
+            if (!selected.size) {
+                setStatus("Select at least one model first.");
+                return;
+            }
+            const passes = parseRefinePasses();
+            const out = runRefine("grow", selected, radius, passes);
+            setModelSelectionByIds([...out], false);
+            refreshModelList();
+            pushHistory("Grow selection");
+            setStatus("Selection grown (" + passes + " pass).");
+        }
+
+        function shrinkSelection() {
+            const radius = parseRefineRadius();
+            if (!radius) {
+                setStatus("Refine radius must be > 0.");
+                return;
+            }
+            const selected = new Set(getSelectedModelIds());
+            if (!selected.size) {
+                setStatus("Select at least one model first.");
+                return;
+            }
+            const passes = parseRefinePasses();
+            const out = runRefine("shrink", selected, radius, passes);
+            setModelSelectionByIds([...out], false);
+            refreshModelList();
+            pushHistory("Shrink selection");
+            setStatus("Selection shrunk (" + passes + " pass).");
+        }
+
+        function smoothSelection() {
+            const radius = parseRefineRadius();
+            if (!radius) {
+                setStatus("Refine radius must be > 0.");
+                return;
+            }
+            const selected = new Set(getSelectedModelIds());
+            if (!selected.size) {
+                setStatus("Select at least one model first.");
+                return;
+            }
+            const passes = parseRefinePasses();
+            const out = runRefine("smooth", selected, radius, passes);
+            setModelSelectionByIds([...out], false);
+            refreshModelList();
+            pushHistory("Smooth selection");
+            setStatus("Selection smoothed (" + passes + " pass).");
+        }
+
+        function previewRefine() {
+            const radius = parseRefineRadius();
+            const passes = parseRefinePasses();
+            if (!radius) {
+                setStatus("Refine radius must be > 0.");
+                return;
+            }
+            const selected = new Set(getSelectedModelIds());
+            if (!selected.size) {
+                setStatus("Select at least one model first.");
+                return;
+            }
+            const modes = ["grow", "shrink", "smooth"];
+            const lines = [];
+            for (const mode of modes) {
+                const out = runRefine(mode, selected, radius, passes);
+                lines.push(mode + ": " + out.size);
+            }
+            refinePreviewText.textContent = "Preview (" + passes + " pass): " + lines.join(" | ");
+            setStatus("Refine preview updated.");
+        }
+
+        function updateSelectionRect(x0, y0, x1, y1) {
+            const left = Math.min(x0, x1);
+            const top = Math.min(y0, y1);
+            const width = Math.abs(x1 - x0);
+            const height = Math.abs(y1 - y0);
+            selectRectEl.style.left = left + "px";
+            selectRectEl.style.top = top + "px";
+            selectRectEl.style.width = width + "px";
+            selectRectEl.style.height = height + "px";
+            selectRectEl.style.display = "block";
+            return { left, top, right: left + width, bottom: top + height };
+        }
+
+        function projectWorldToCanvas(v) {
+            const world = BABYLON.Matrix.IdentityReadOnly;
+            const transform = scene.getTransformMatrix();
+            const vp = camera.viewport.toGlobal(engine.getRenderWidth(), engine.getRenderHeight());
+            return BABYLON.Vector3.Project(v, world, transform, vp);
+        }
+
+        function selectModelsInRect(rect, append = false) {
+            const picked = [];
+            for (const m of loadedModels) {
+                if (!m.mesh?.isEnabled()) continue;
+                const center = m.mesh.getBoundingInfo().boundingBox.centerWorld;
+                const p = projectWorldToCanvas(center);
+                if (p.z < 0 || p.z > 1) continue;
+                if (p.x >= rect.left && p.x <= rect.right && p.y >= rect.top && p.y <= rect.bottom) {
+                    picked.push(m.id);
+                }
+            }
+            if (!picked.length) {
+                if (!append) setModelSelectionByIds([], false);
+                setStatus("Box select: no models hit.");
+                return;
+            }
+            setModelSelectionByIds(picked, append);
+            refreshModelList();
+            setStatus("Box selected " + picked.length + " model(s).");
+        }
+
+        function updateBrushCursor(point) {
+            brushCursorEl.style.left = point.x + "px";
+            brushCursorEl.style.top = point.y + "px";
+            brushCursorEl.style.width = (brushRadiusPx * 2) + "px";
+            brushCursorEl.style.height = (brushRadiusPx * 2) + "px";
+            brushCursorEl.style.marginLeft = (-brushRadiusPx) + "px";
+            brushCursorEl.style.marginTop = (-brushRadiusPx) + "px";
+            brushCursorEl.style.display = brushSelectEnabled ? "block" : "none";
+        }
+
+        function applyBrushSelection(point, mode) {
+            const hits = [];
+            for (const m of loadedModels) {
+                if (!m.mesh?.isEnabled()) continue;
+                const center = m.mesh.getBoundingInfo().boundingBox.centerWorld;
+                const p = projectWorldToCanvas(center);
+                if (p.z < 0 || p.z > 1) continue;
+                const dx = p.x - point.x;
+                const dy = p.y - point.y;
+                if ((dx * dx + dy * dy) <= (brushRadiusPx * brushRadiusPx)) hits.push(m.id);
+            }
+            if (!hits.length) return;
+            const selected = new Set([...modelListEl.selectedOptions].map((o) => Number(o.value)));
+            if (mode === "replace") {
+                setModelSelectionByIds(hits, false);
+            } else if (mode === "add") {
+                for (const id of hits) selected.add(id);
+                setModelSelectionByIds([...selected], false);
+            } else {
+                for (const id of hits) selected.delete(id);
+                setModelSelectionByIds([...selected], false);
+            }
+            refreshModelList();
+            setStatus("Brush selected " + getSelectedModelIds().length + " model(s).");
+        }
+
         function refreshLayerFilterOptions() {
             const layers = new Set(["__all__"]);
             for (const m of loadedModels) layers.add(m.layer || "Default");
@@ -914,6 +2407,7 @@
                     bgColor: bgColorInput.value,
                     showGrid,
                     showAxes,
+                    plyBasemapEnabled,
                     activeLayerFilter,
                 },
                 models: loadedModels.map((m) => ({
@@ -1067,6 +2561,8 @@
             target.mesh.setEnabled(true);
             currentSplatMesh = target.mesh;
             updateSplatInfoPanel();
+            updateBasemapAlignmentFromMesh(target.mesh);
+            if (plyBasemapEnabled) syncPlyBasemapCamera();
             setStatus("Active model: " + target.name);
             readCurrentTransformToInputs();
         }
@@ -1111,6 +2607,7 @@
                     quality: qualitySelect.value,
                     showGrid,
                     showAxes,
+                    plyBasemapEnabled,
                     activeLayerFilter,
                     moveSpeed,
                     rotSpeed,
@@ -1174,6 +2671,9 @@
                 transformModeSelect.value = project.app.transformMode || "rotate";
                 setGridVisible(Boolean(project.app.showGrid));
                 setAxesVisible(Boolean(project.app.showAxes));
+                if (project.app.plyBasemapEnabled) {
+                    await setPlyBasemapEnabled(true);
+                }
                 activeLayerFilter = project.app.activeLayerFilter || "__all__";
             }
 
@@ -1228,6 +2728,266 @@
             a.download = filename;
             a.click();
             URL.revokeObjectURL(a.href);
+        }
+
+        function saveProjectNow() {
+            if (loadedModels.length === 0) {
+                setStatus("No model loaded to save.");
+                return false;
+            }
+            showLoading("Packing project...");
+            try {
+                const state = captureProjectState();
+                const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+                const fileName = "gview-" + stamp + ".pvproj";
+                const projectText = JSON.stringify(state);
+                downloadTextFile(fileName, projectText);
+                currentProjectName = fileName;
+                markDirty(false);
+                localStorage.removeItem(AUTOSAVE_KEY);
+                setStatus("Project saved.");
+                return true;
+            } catch (err) {
+                logMessage("Project save failed: " + (err.message || String(err)), "ERROR");
+                setStatus("Project save failed.");
+                return false;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function updateImportHint() {
+            const text = (importSourceInputEl.value || "").trim();
+            if (!text) return;
+            const lowered = text.toLowerCase();
+            if (lowered.endsWith(".ply") || lowered.includes(".ply?") || lowered.includes(".ply#")) {
+                setStatus("Import target recognized: PLY file.");
+                return;
+            }
+            setStatus("Import input not recognized. Use .ply file path or URL.");
+        }
+
+        function updateOrthoOverlayStyle() {
+            const op = Number(orthoOpacityInput.value || 100);
+            const fit = orthoFitModeSelect.value || "contain";
+            orthoPhotoImgEl.style.opacity = String(Math.max(0, Math.min(100, op)) / 100);
+            orthoPhotoImgEl.style.objectFit = fit;
+            orthoPhotoCanvasEl.style.opacity = String(Math.max(0, Math.min(100, op)) / 100);
+            if (fit === "cover") {
+                orthoPhotoCanvasEl.style.width = "100%";
+                orthoPhotoCanvasEl.style.height = "100%";
+                orthoPhotoCanvasEl.style.maxWidth = "";
+                orthoPhotoCanvasEl.style.maxHeight = "";
+            } else if (fit === "none") {
+                orthoPhotoCanvasEl.style.width = "auto";
+                orthoPhotoCanvasEl.style.height = "auto";
+                orthoPhotoCanvasEl.style.maxWidth = "none";
+                orthoPhotoCanvasEl.style.maxHeight = "none";
+            } else {
+                orthoPhotoCanvasEl.style.width = "auto";
+                orthoPhotoCanvasEl.style.height = "auto";
+                orthoPhotoCanvasEl.style.maxWidth = "100%";
+                orthoPhotoCanvasEl.style.maxHeight = "100%";
+            }
+            orthoOpacityLabel.textContent = String(Math.max(0, Math.min(100, op))) + "%";
+        }
+
+        function clearOrthoPhotoOverlay() {
+            if (currentOrthoPhotoUrl.startsWith("blob:")) {
+                URL.revokeObjectURL(currentOrthoPhotoUrl);
+            }
+            currentOrthoPhotoUrl = "";
+            orthoPhotoImgEl.removeAttribute("src");
+            orthoPhotoImgEl.style.display = "none";
+            orthoPhotoCanvasEl.style.display = "none";
+            orthoPhotoOverlayEl.style.display = "none";
+            setStatus("Ortho photo cleared.");
+        }
+
+        function setOrthoPhotoOverlay(source) {
+            const src = String(source || "").trim();
+            if (!src) {
+                setStatus("Invalid ortho photo source.");
+                return;
+            }
+            if (currentOrthoPhotoUrl && currentOrthoPhotoUrl.startsWith("blob:")) {
+                URL.revokeObjectURL(currentOrthoPhotoUrl);
+            }
+            currentOrthoPhotoUrl = src;
+            orthoPhotoCanvasEl.style.display = "none";
+            orthoPhotoImgEl.style.display = "block";
+            orthoPhotoImgEl.src = src;
+            orthoPhotoOverlayEl.style.display = "flex";
+            updateOrthoOverlayStyle();
+            setStatus("Ortho photo loaded.");
+        }
+
+        function loadScriptOnce(url) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement("script");
+                script.src = url;
+                script.async = true;
+                script.onload = () => resolve();
+                script.onerror = () => reject(new Error("Failed to load script: " + url));
+                document.head.appendChild(script);
+            });
+        }
+
+        async function ensureGeoTiffDecoder() {
+            if (window.GeoTIFF && typeof window.GeoTIFF.fromArrayBuffer === "function") {
+                return window.GeoTIFF;
+            }
+            if (!geoTiffLoaderPromise) {
+                geoTiffLoaderPromise = (async () => {
+                    const candidates = [
+                        "https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.min.js",
+                        "https://unpkg.com/geotiff@2.1.3/dist-browser/geotiff.min.js",
+                    ];
+                    let lastErr = null;
+                    for (const url of candidates) {
+                        try {
+                            await loadScriptOnce(url);
+                            if (window.GeoTIFF && typeof window.GeoTIFF.fromArrayBuffer === "function") {
+                                return window.GeoTIFF;
+                            }
+                        } catch (err) {
+                            lastErr = err;
+                        }
+                    }
+                    throw (lastErr || new Error("GeoTIFF decoder unavailable."));
+                })();
+            }
+            return await geoTiffLoaderPromise;
+        }
+
+        async function renderTiffBufferToOverlay(buffer, label) {
+            const geo = await ensureGeoTiffDecoder();
+            const tiff = await geo.fromArrayBuffer(buffer);
+            const image = await tiff.getImage();
+            const noDataValue = image.getGDALNoData ? image.getGDALNoData() : null;
+            const width = image.getWidth();
+            const height = image.getHeight();
+            const rasters = await image.readRasters({ interleave: false });
+            if (!rasters || !rasters.length) {
+                throw new Error("No raster bands found in TIFF.");
+            }
+            orthoPhotoCanvasEl.width = width;
+            orthoPhotoCanvasEl.height = height;
+            const ctx = orthoPhotoCanvasEl.getContext("2d");
+            if (!ctx) throw new Error("Canvas context unavailable.");
+            const img = ctx.createImageData(width, height);
+            const px = width * height;
+
+            function bandStatsRobust(arr, nodata) {
+                let min = Infinity;
+                let max = -Infinity;
+                let validCount = 0;
+                for (let i = 0; i < px; i++) {
+                    const v = arr[i];
+                    if (nodata != null && v === nodata) continue;
+                    if (!Number.isFinite(v)) continue;
+                    validCount += 1;
+                    if (v < min) min = v;
+                    if (v > max) max = v;
+                }
+                if (validCount < 8 || !Number.isFinite(min) || !Number.isFinite(max) || max <= min) {
+                    return { min: 0, max: 255 };
+                }
+                const stride = Math.max(1, Math.floor(px / 200000));
+                const sample = [];
+                for (let i = 0; i < px; i += stride) {
+                    const v = arr[i];
+                    if (nodata != null && v === nodata) continue;
+                    if (!Number.isFinite(v)) continue;
+                    sample.push(v);
+                }
+                if (sample.length < 8) {
+                    return { min, max };
+                }
+                sample.sort((a, b) => a - b);
+                const loIdx = Math.floor(sample.length * 0.02);
+                const hiIdx = Math.min(sample.length - 1, Math.floor(sample.length * 0.98));
+                const pMin = sample[loIdx];
+                const pMax = sample[hiIdx];
+                if (!Number.isFinite(pMin) || !Number.isFinite(pMax) || pMax <= pMin) {
+                    return { min, max };
+                }
+                return { min: pMin, max: pMax };
+            }
+            function scaleToByte(v, min, max, nodata) {
+                if (nodata != null && v === nodata) return 0;
+                if (!Number.isFinite(v)) return 0;
+                const t = (v - min) / Math.max(1e-9, (max - min));
+                return Math.max(0, Math.min(255, Math.round(t * 255)));
+            }
+
+            if (rasters.length >= 3) {
+                const r = rasters[0];
+                const g = rasters[1];
+                const b = rasters[2];
+                const rs = bandStatsRobust(r, noDataValue);
+                const gs = bandStatsRobust(g, noDataValue);
+                const bs = bandStatsRobust(b, noDataValue);
+                for (let i = 0; i < px; i++) {
+                    const o = i * 4;
+                    img.data[o] = scaleToByte(r[i], rs.min, rs.max, noDataValue);
+                    img.data[o + 1] = scaleToByte(g[i], gs.min, gs.max, noDataValue);
+                    img.data[o + 2] = scaleToByte(b[i], bs.min, bs.max, noDataValue);
+                    img.data[o + 3] = 255;
+                }
+            } else {
+                const band = rasters[0];
+                const stats = bandStatsRobust(band, noDataValue);
+                for (let i = 0; i < px; i++) {
+                    const o = i * 4;
+                    const v = scaleToByte(band[i], stats.min, stats.max, noDataValue);
+                    img.data[o] = v;
+                    img.data[o + 1] = v;
+                    img.data[o + 2] = v;
+                    img.data[o + 3] = 255;
+                }
+            }
+            ctx.putImageData(img, 0, 0);
+            if (currentOrthoPhotoUrl && currentOrthoPhotoUrl.startsWith("blob:")) {
+                URL.revokeObjectURL(currentOrthoPhotoUrl);
+            }
+            currentOrthoPhotoUrl = label || "";
+            orthoPhotoImgEl.removeAttribute("src");
+            orthoPhotoImgEl.style.display = "none";
+            orthoPhotoCanvasEl.style.display = "block";
+            orthoPhotoOverlayEl.style.display = "flex";
+            updateOrthoOverlayStyle();
+            setStatus("Ortho TIFF loaded.");
+        }
+
+        async function loadOrthoPhotoFromSource(source) {
+            const src = String(source || "").trim();
+            if (!src) return;
+            const low = src.toLowerCase();
+            if (low.endsWith(".tif") || low.endsWith(".tiff") || low.includes(".tif?") || low.includes(".tiff?")) {
+                const res = await fetch(src, { cache: "no-store" });
+                if (!res.ok) throw new Error("TIFF fetch failed: HTTP " + res.status);
+                const buf = await res.arrayBuffer();
+                await renderTiffBufferToOverlay(buf, src);
+                return;
+            }
+            setOrthoPhotoOverlay(src);
+        }
+
+        function showCloseModal() {
+            closeModalEl.style.display = "flex";
+        }
+
+        function hideCloseModal() {
+            closeModalEl.style.display = "none";
+            pendingCloseRequest = false;
+        }
+
+        function requestCloseBypass() {
+            closeBypassGuard = true;
+            isProjectDirty = false;
+            updateProjectTitleAndStatusSuffix();
+            setTimeout(() => window.close(), 0);
         }
 
         function fitCameraToMesh(mesh) {
@@ -1332,6 +3092,96 @@
             pushHistory("View " + direction);
         }
 
+        function applySelectionScale(value) {
+            const selected = getSelectedModels();
+            if (!selected.length) {
+                setStatus("No selected or active model for scale edit.");
+                return;
+            }
+            const v = Math.max(0.001, Number(value));
+            if (!Number.isFinite(v)) {
+                setStatus("Invalid scale value.");
+                return;
+            }
+            for (const m of selected) {
+                const base = m.mesh.scaling.clone();
+                const len = Math.max(1e-6, (base.x + base.y + base.z) / 3);
+                const factor = v / len;
+                m.mesh.scaling.scaleInPlace(factor);
+            }
+            readCurrentTransformToInputs();
+            pushHistory("Splat scale");
+            setStatus("Applied scale to " + selected.length + " model(s).");
+        }
+
+        function applySelectionOpacity(valuePct) {
+            const selected = getSelectedModels();
+            if (!selected.length) {
+                setStatus("No selected or active model for opacity edit.");
+                return;
+            }
+            const v = Math.max(0.05, Math.min(1, Number(valuePct) / 100));
+            for (const m of selected) {
+                m.mesh.visibility = v;
+            }
+            pushHistory("Splat opacity");
+            setStatus("Applied opacity to " + selected.length + " model(s).");
+        }
+
+        function cleanupOutliersByRadius(threshold) {
+            const t = Number(threshold);
+            if (!Number.isFinite(t) || t <= 0) {
+                setStatus("Outlier threshold must be > 0.");
+                return;
+            }
+            let removed = 0;
+            for (let i = loadedModels.length - 1; i >= 0; i--) {
+                const m = loadedModels[i];
+                const r = m.mesh.getBoundingInfo().boundingSphere.radiusWorld;
+                if (r < t) {
+                    m.mesh.dispose();
+                    loadedModels.splice(i, 1);
+                    removed += 1;
+                }
+            }
+            if (!removed) {
+                setStatus("No outliers removed.");
+                return;
+            }
+            currentSplatMesh = loadedModels[0]?.mesh || null;
+            refreshLayerFilterOptions();
+            refreshModelList();
+            updateSplatInfoPanel();
+            pushHistory("Cleanup outliers");
+            setStatus("Removed " + removed + " outlier model(s).");
+        }
+
+        function exportSelectedModels() {
+            const selected = getSelectedModels();
+            if (!selected.length) {
+                setStatus("No selected models to export.");
+                return;
+            }
+            const payload = {
+                version: 1,
+                type: "gview-selected-export",
+                exportedAt: new Date().toISOString(),
+                models: selected.map((m) => ({
+                    name: m.name,
+                    layer: m.layer || "Default",
+                    dataUrl: m.dataUrl || null,
+                    transform: {
+                        position: cloneVec(m.mesh.position),
+                        rotation: cloneVec(m.mesh.rotation),
+                        scaling: cloneVec(m.mesh.scaling),
+                    },
+                })),
+            };
+            const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+            downloadTextFile("gview-selected-" + stamp + ".json", JSON.stringify(payload));
+            setStatus("Exported " + selected.length + " selected model(s).");
+        }
+
         function drawFpsGraph() {
             const ctx = fpsGraphEl.getContext("2d");
             if (!ctx) return;
@@ -1421,12 +3271,15 @@
                 mesh.name = "model_" + id;
                 const dataUrl = options.embeddedDataUrl || await fileToDataUrl(file);
                 const item = { id, mesh, name: file.name, dataUrl, layer: "Default", locked: false };
+                ensureSplatEditData(item);
                 loadedModels.push(item);
                 setActiveModelById(id);
                 layerNameInputEl.value = item.layer;
                 refreshModelList();
                 refreshLayerFilterOptions();
                 fitCameraToMesh(mesh);
+                updateBasemapAlignmentFromMesh(mesh);
+                if (plyBasemapEnabled) syncPlyBasemapCamera();
                 if (!options.silentStatus) setStatus("Loaded: " + file.name);
             } finally {
                 URL.revokeObjectURL(blobUrl);
@@ -1445,12 +3298,15 @@
                 mesh.name = "model_" + id;
                 const guessedName = url.split("/").pop()?.split("?")[0] || ("remote_" + id + ".ply");
                 const item = { id, mesh, name: guessedName, dataUrl: null, layer: "Default", locked: false };
+                ensureSplatEditData(item);
                 loadedModels.push(item);
                 setActiveModelById(id);
                 layerNameInputEl.value = item.layer;
                 refreshModelList();
                 refreshLayerFilterOptions();
                 fitCameraToMesh(mesh);
+                updateBasemapAlignmentFromMesh(mesh);
+                if (plyBasemapEnabled) syncPlyBasemapCamera();
                 setStatus("Loaded URL: " + guessedName);
                 pushHistory("Load PLY URL");
             } catch (err) {
@@ -1468,20 +3324,13 @@
                 return;
             }
             const s = source.toLowerCase();
-            if (s.includes("tileset.json")) {
-                viewerModeSelectEl.value = "3dtiles";
-                switchViewerMode("3dtiles");
-                tilesetUrlInputEl.value = source;
-                await load3DTilesFromUrl(source);
-                return;
-            }
             if (s.endsWith(".ply") || s.includes(".ply?") || s.includes(".ply#")) {
                 viewerModeSelectEl.value = "ply";
                 switchViewerMode("ply");
                 await loadPlyFromUrl(source);
                 return;
             }
-            setStatus("Unsupported import source. Use .ply or tileset.json URL.");
+            setStatus("Unsupported import source. Use .ply path or URL.");
         }
 
         async function loadFiles(files) {
@@ -1510,8 +3359,11 @@
         proxyPlane.isPickable = true;
 
         const fileInput = document.getElementById("fileInput");
+        const orthoImageInput = document.getElementById("orthoImageInput");
         const projectInput = document.getElementById("projectInput");
         const importBtn = document.getElementById("importBtn");
+        const importOrthoBtn = document.getElementById("importOrthoBtn");
+        const clearOrthoBtn = document.getElementById("clearOrthoBtn");
         const saveProjectBtn = document.getElementById("saveProjectBtn");
         const loadProjectBtn = document.getElementById("loadProjectBtn");
         const clearAllBtn = document.getElementById("clearAllBtn");
@@ -1542,17 +3394,42 @@
         const viewRightBtn = document.getElementById("viewRightBtn");
         const viewTopBtn = document.getElementById("viewTopBtn");
         const viewBottomBtn = document.getElementById("viewBottomBtn");
+        const orthoFitBtn = document.getElementById("orthoFitBtn");
+        const orthoActualBtn = document.getElementById("orthoActualBtn");
         const loadTilesBtn = document.getElementById("loadTilesBtn");
         const clearTilesBtn = document.getElementById("clearTilesBtn");
+        const browseTilesetFolderBtn = document.getElementById("browseTilesetFolderBtn");
+        const tilesOverviewBtn = document.getElementById("tilesOverviewBtn");
+        const tilesCloseupBtn = document.getElementById("tilesCloseupBtn");
+        const tilesZoomBtn = document.getElementById("tilesZoomBtn");
+        const tilesBasemapBtn = document.getElementById("tilesBasemapBtn");
+        tilesElevationInputEl = document.getElementById("tilesElevationInput");
         const tabButtons = document.querySelectorAll(".tabBtn");
+
+        window.gviewTilesLog = (message, level = "INFO") => logMessage(message, level);
+        window.gviewTilesStatus = (message) => setTilesStatus(message);
 
         importBtn.addEventListener("click", async () => {
             await importFromSourceText(importSourceInputEl.value);
+        });
+        importOrthoBtn.addEventListener("click", () => {
+            orthoImageInput.click();
+        });
+        clearOrthoBtn.addEventListener("click", () => {
+            clearOrthoPhotoOverlay();
         });
         importSourceInputEl.addEventListener("keydown", async (e) => {
             if (e.key !== "Enter") return;
             e.preventDefault();
             await importFromSourceText(importSourceInputEl.value);
+        });
+        importSourceInputEl.addEventListener("input", updateImportHint);
+        orthoOpacityInput.addEventListener("input", () => {
+            updateOrthoOverlayStyle();
+        });
+        orthoFitModeSelect.addEventListener("change", () => {
+            updateOrthoOverlayStyle();
+            setStatus("Ortho overlay fit: " + orthoFitModeSelect.value);
         });
         toggleUiBtn.addEventListener("click", () => {
             const isHidden = ui.classList.toggle("hiddenPanel");
@@ -1569,28 +3446,166 @@
             await load3DTilesFromUrl((tilesetUrlInputEl.value || "").trim());
         });
         clearTilesBtn.addEventListener("click", clear3DTiles);
-        loadProjectBtn.addEventListener("click", () => projectInput.click());
-        saveProjectBtn.addEventListener("click", () => {
-            if (loadedModels.length === 0) {
-                setStatus("No model loaded to save.");
+        browseTilesetFolderBtn.addEventListener("click", async () => {
+            if (!window.gviewElectron) {
+                setStatus("Browse Folder is available in the GView desktop app.");
                 return;
             }
-            showLoading("Packing project...");
+            showLoading("Selecting tileset folder...");
             try {
-                const state = captureProjectState();
-                const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-                const fileName = "plyviewer-" + stamp + ".pvproj";
-                const projectText = JSON.stringify(state);
-                downloadTextFile(fileName, projectText);
-                currentProjectName = fileName;
-                markDirty(false);
-                setStatus("Project saved.");
+                const folder = await window.gviewElectron.pickTilesetFolder();
+                if (!folder) {
+                    setStatus("Folder browse canceled.");
+                    return;
+                }
+                const url = await window.gviewElectron.startTileServer(folder);
+                tilesetUrlInputEl.value = url;
+                await load3DTilesFromUrl(url);
             } catch (err) {
-                logMessage("Project save failed: " + (err.message || String(err)), "ERROR");
-                setStatus("Project save failed.");
+                setStatus("Local tile server failed. " + (err?.message || String(err)));
             } finally {
                 hideLoading();
             }
+        });
+        tilesZoomBtn.addEventListener("click", async () => {
+            try {
+                const tiles = await waitForGViewTiles();
+                await tiles.zoomToLayer();
+                setStatus("Zoomed to tileset layer.");
+                setTilesStatus(tiles.getStatus ? tiles.getStatus() : "Zoomed to layer.");
+            } catch (err) {
+                setStatus("Zoom failed. " + (err?.message || String(err)));
+            }
+        });
+        tilesOverviewBtn.addEventListener("click", async () => {
+            try {
+                const tiles = await waitForGViewTiles();
+                await tiles.goToOverview();
+                setStatus("Overview camera.");
+            } catch (err) {
+                setStatus("Overview failed. " + (err?.message || String(err)));
+            }
+        });
+        tilesCloseupBtn.addEventListener("click", async () => {
+            try {
+                const tiles = await waitForGViewTiles();
+                await tiles.goToCloseup();
+                setStatus("Close-up camera.");
+            } catch (err) {
+                setStatus("Close-up failed. " + (err?.message || String(err)));
+            }
+        });
+        tilesBasemapBtn.addEventListener("click", async () => {
+            try {
+                const tiles = await waitForGViewTiles();
+                tiles.toggleBasemap();
+                setStatus("Basemap toggled.");
+            } catch (err) {
+                setStatus("Basemap toggle failed. " + (err?.message || String(err)));
+            }
+        });
+        tilesetUrlInputEl.addEventListener("keydown", async (e) => {
+            if (e.key !== "Enter") return;
+            e.preventDefault();
+            await load3DTilesFromUrl((tilesetUrlInputEl.value || "").trim());
+        });
+        loadProjectBtn.addEventListener("click", () => projectInput.click());
+        saveProjectBtn.addEventListener("click", () => {
+            saveProjectNow();
+        });
+        closeSaveBtn.addEventListener("click", () => {
+            const ok = saveProjectNow();
+            if (!ok) return;
+            hideCloseModal();
+            requestCloseBypass();
+        });
+        closeDontSaveBtn.addEventListener("click", () => {
+            hideCloseModal();
+            requestCloseBypass();
+        });
+        closeCancelBtn.addEventListener("click", () => {
+            hideCloseModal();
+            setStatus("Close canceled.");
+        });
+        boxSelectBtn.addEventListener("click", () => {
+            boxSelectEnabled = !boxSelectEnabled;
+            if (boxSelectEnabled) {
+                brushSelectEnabled = false;
+                brushSelectBtn.textContent = "Brush Select: Off";
+                brushCursorEl.style.display = "none";
+            }
+            syncPointerButtonsForTools();
+            boxSelectBtn.textContent = "Box Select: " + (boxSelectEnabled ? "On" : "Off");
+            setStatus(boxSelectEnabled ? "Box select enabled (Ctrl + Left Drag)." : "Box select disabled.");
+        });
+        brushSelectBtn.addEventListener("click", () => {
+            brushSelectEnabled = !brushSelectEnabled;
+            if (brushSelectEnabled) {
+                boxSelectEnabled = false;
+                boxSelectBtn.textContent = "Box Select: Off";
+                const active = getActiveModelItem();
+                if (active) {
+                    setModelSelectionByIds([active.id], false);
+                    refreshModelList();
+                }
+            } else {
+                brushCursorEl.style.display = "none";
+            }
+            syncPointerButtonsForTools();
+            brushSelectBtn.textContent = "Brush Select: " + (brushSelectEnabled ? "On" : "Off");
+            setStatus(brushSelectEnabled ? "Brush select enabled (Left Drag)." : "Brush select disabled.");
+        });
+        brushRadiusInput.addEventListener("input", () => {
+            brushRadiusPx = Math.max(8, Number(brushRadiusInput.value) || 40);
+            brushRadiusLabel.textContent = String(Math.round(brushRadiusPx)) + " px";
+        });
+        brushModeSelect.addEventListener("change", () => {
+            brushMode = brushModeSelect.value || "replace";
+            setStatus("Brush mode: " + brushMode);
+        });
+        selectAllBtn.addEventListener("click", selectAllModels);
+        clearSelectionBtn.addEventListener("click", clearSelection);
+        invertSelectionBtn.addEventListener("click", invertSelection);
+        removeSelectedBtn.addEventListener("click", removeSelectedModels);
+        growSelectionBtn.addEventListener("click", growSelection);
+        shrinkSelectionBtn.addEventListener("click", shrinkSelection);
+        smoothSelectionBtn.addEventListener("click", smoothSelection);
+        previewRefineBtn.addEventListener("click", previewRefine);
+        saveSelectionSetBtn.addEventListener("click", saveSelectionSet);
+        applySelectionSetBtn.addEventListener("click", applySelectionSet);
+        deleteSelectionSetBtn.addEventListener("click", deleteSelectionSet);
+        selectionSetSelect.addEventListener("change", () => {
+            const name = selectionSetSelect.value;
+            if (name) selectionSetNameInput.value = name;
+        });
+        exportSelectedBtn.addEventListener("click", exportSelectedModels);
+        splatScaleInput.addEventListener("input", () => {
+            splatScaleLabel.textContent = Number(splatScaleInput.value).toFixed(2) + "x";
+        });
+        splatOpacityInput.addEventListener("input", () => {
+            splatOpacityLabel.textContent = String(Math.round(Number(splatOpacityInput.value))) + "%";
+        });
+        applySplatScaleBtn.addEventListener("click", () => applySelectionScale(Number(splatScaleInput.value)));
+        resetSplatScaleBtn.addEventListener("click", () => {
+            splatScaleInput.value = "1.00";
+            splatScaleLabel.textContent = "1.00x";
+            applySelectionScale(1.0);
+        });
+        applySplatOpacityBtn.addEventListener("click", () => applySelectionOpacity(Number(splatOpacityInput.value)));
+        resetSplatOpacityBtn.addEventListener("click", () => {
+            splatOpacityInput.value = "100";
+            splatOpacityLabel.textContent = "100%";
+            applySelectionOpacity(100);
+        });
+        cleanupOutliersBtn.addEventListener("click", () => {
+            cleanupOutliersByRadius(outlierThresholdInput.value);
+        });
+        viewCubeButtons.forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const dir = btn.dataset.viewCube;
+                if (!dir) return;
+                setCameraViewDirection(dir);
+            });
         });
 
         clearAllBtn.addEventListener("click", clearAllModels);
@@ -1753,6 +3768,7 @@
             setActiveModelById(id);
             const hit = loadedModels.find((m) => m.id === id);
             if (hit) layerNameInputEl.value = hit.layer || "Default";
+            updateSelectionStats();
         });
 
         moveSpeedInput.addEventListener("input", () => {
@@ -1779,10 +3795,68 @@
             dragSensitivity = Number(dragSensInput.value);
             dragSensLabel.textContent = dragSensitivity.toFixed(2);
         });
+        projectionModeSelect.addEventListener("change", () => {
+            setProjectionMode(projectionModeSelect.value);
+            syncPointerButtonsForTools();
+            if (projectionMode === "ortho") fitOrthoToActiveModel();
+        });
+        orthoZoomInput.addEventListener("input", () => {
+            setOrthoZoomFactor(Number(orthoZoomInput.value), false);
+            orthoZoomInput.value = String(orthoZoomFactor.toFixed(2));
+        });
+        orthoFitBtn.addEventListener("click", () => {
+            if (projectionMode !== "ortho") setProjectionMode("ortho");
+            fitOrthoToActiveModel();
+        });
+        orthoActualBtn.addEventListener("click", () => {
+            if (projectionMode !== "ortho") setProjectionMode("ortho");
+            setOrthoZoomFactor(1.0);
+            setStatus("Ortho 1:1 view applied.");
+        });
         bgColorInput.addEventListener("input", () => {
-            scene.clearColor = hexToColor4(bgColorInput.value);
+            if (!(viewerMode === "ply" && plyBasemapEnabled)) {
+                scene.clearColor = hexToColor4(bgColorInput.value);
+            }
             pushHistory("Background color");
         });
+        const togglePlyBasemapBtn = document.getElementById("togglePlyBasemapBtn");
+        const alignPlyBasemapBtn = document.getElementById("alignPlyBasemapBtn");
+        if (togglePlyBasemapBtn) {
+            togglePlyBasemapBtn.addEventListener("click", async () => {
+                await setPlyBasemapEnabled(!plyBasemapEnabled);
+            });
+        }
+        if (alignPlyBasemapBtn) {
+            alignPlyBasemapBtn.addEventListener("click", async () => {
+                if (!plyBasemapEnabled) await setPlyBasemapEnabled(true);
+                await alignPlyBasemapToModel();
+            });
+        }
+        const measureDistanceBtn = document.getElementById("measureDistanceBtn");
+        const measureAngleBtn = document.getElementById("measureAngleBtn");
+        const measureClearBtn = document.getElementById("measureClearBtn");
+        if (measureDistanceBtn) {
+            measureDistanceBtn.addEventListener("click", () => {
+                startMeasureDistance().catch((err) => {
+                    setStatus("Distance measure failed: " + (err?.message || String(err)));
+                });
+            });
+        }
+        if (measureAngleBtn) {
+            measureAngleBtn.addEventListener("click", () => {
+                startMeasureAngle().catch((err) => {
+                    setStatus("Angle measure failed: " + (err?.message || String(err)));
+                });
+            });
+        }
+        if (measureClearBtn) {
+            measureClearBtn.addEventListener("click", () => {
+                clearAllMeasurements().catch(() => {});
+            });
+        }
+        window.gviewMeasureHint = (message) => {
+            if (measureHintTextEl) measureHintTextEl.textContent = message;
+        };
         qualitySelect.addEventListener("change", () => {
             applyQualityPreset(qualitySelect.value);
             pushHistory("Quality preset");
@@ -1794,6 +3868,28 @@
             switchViewerMode("ply");
             await loadFiles(files);
             fileInput.value = "";
+        });
+        orthoImageInput.addEventListener("change", (event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            const isTiff = /\.tiff?$/i.test(file.name) || /tiff/i.test(file.type || "");
+            const run = async () => {
+                if (isTiff) {
+                    const buf = await file.arrayBuffer();
+                    await renderTiffBufferToOverlay(buf, file.name);
+                    setStatus("Ortho TIFF loaded: " + file.name);
+                    return;
+                }
+                const blobUrl = URL.createObjectURL(file);
+                setOrthoPhotoOverlay(blobUrl);
+                setStatus("Ortho photo loaded: " + file.name);
+            };
+            run().catch((err) => {
+                logMessage("Ortho import failed: " + (err.message || String(err)), "ERROR");
+                setStatus("Failed to load ortho photo: " + (err.message || String(err)));
+            }).finally(() => {
+                orthoImageInput.value = "";
+            });
         });
         projectInput.addEventListener("change", async (event) => {
             const file = event.target.files?.[0];
@@ -1869,6 +3965,31 @@
 
         canvas.addEventListener("pointerdown", (e) => {
             if (viewerMode !== "ply") return;
+            if (plyMeasureMode && e.button === 0 && !e.ctrlKey) {
+                handlePlyMeasureClick();
+                e.stopPropagation();
+                e.preventDefault();
+                return;
+            }
+            if (brushSelectEnabled && e.button === 0) {
+                const p = canvasPointFromEvent(e);
+                brushSelectState = { pointerId: e.pointerId, didReplaceClear: false };
+                updateBrushCursor(p);
+                applyBrushSelection(p, brushMode);
+                canvas.setPointerCapture?.(e.pointerId);
+                e.stopPropagation();
+                e.preventDefault();
+                return;
+            }
+            if (boxSelectEnabled && e.button === 0 && e.ctrlKey) {
+                const p = canvasPointFromEvent(e);
+                boxSelectState = { pointerId: e.pointerId, start: p, append: e.shiftKey };
+                updateSelectionRect(p.x, p.y, p.x, p.y);
+                canvas.setPointerCapture?.(e.pointerId);
+                e.stopPropagation();
+                e.preventDefault();
+                return;
+            }
             if (e.button !== 2) return;
             let mode = "pan";
             if (e.shiftKey) {
@@ -1909,6 +4030,23 @@
         });
         canvas.addEventListener("pointermove", (e) => {
             if (viewerMode !== "ply") return;
+            if (brushSelectEnabled) {
+                const p = canvasPointFromEvent(e);
+                updateBrushCursor(p);
+            }
+            if (brushSelectState && e.pointerId === brushSelectState.pointerId) {
+                const p = canvasPointFromEvent(e);
+                updateBrushCursor(p);
+                applyBrushSelection(p, brushMode);
+                e.preventDefault();
+                return;
+            }
+            if (boxSelectState && e.pointerId === boxSelectState.pointerId) {
+                const p = canvasPointFromEvent(e);
+                updateSelectionRect(boxSelectState.start.x, boxSelectState.start.y, p.x, p.y);
+                e.preventDefault();
+                return;
+            }
             if (!rightDragState) return;
             if (e.pointerId !== rightDragState.pointerId) return;
             const p = canvasPointFromEvent(e);
@@ -1939,6 +4077,24 @@
         });
         canvas.addEventListener("pointerup", (e) => {
             if (viewerMode !== "ply") return;
+            if (brushSelectState && e.pointerId === brushSelectState.pointerId) {
+                brushSelectState = null;
+                const selectedCount = getSelectedModelIds().length;
+                setStatus("Brush selected " + selectedCount + " model(s).");
+                e.stopPropagation();
+                e.preventDefault();
+                return;
+            }
+            if (boxSelectState && e.pointerId === boxSelectState.pointerId) {
+                const p = canvasPointFromEvent(e);
+                const rect = updateSelectionRect(boxSelectState.start.x, boxSelectState.start.y, p.x, p.y);
+                selectModelsInRect(rect, boxSelectState.append);
+                boxSelectState = null;
+                selectRectEl.style.display = "none";
+                e.stopPropagation();
+                e.preventDefault();
+                return;
+            }
             if (!rightDragState) return;
             if (e.pointerId !== rightDragState.pointerId) return;
             endRightDrag(true);
@@ -1947,14 +4103,34 @@
         });
         canvas.addEventListener("pointercancel", (e) => {
             if (viewerMode !== "ply") return;
+            if (brushSelectState && e.pointerId === brushSelectState.pointerId) {
+                brushSelectState = null;
+            }
+            if (boxSelectState && e.pointerId === boxSelectState.pointerId) {
+                boxSelectState = null;
+                selectRectEl.style.display = "none";
+            }
             if (rightDragState && e.pointerId === rightDragState.pointerId) endRightDrag(true);
         });
         canvas.addEventListener("pointerleave", () => {
             if (viewerMode !== "ply") return;
+            if (brushSelectState) brushSelectState = null;
+            if (brushSelectEnabled) brushCursorEl.style.display = "none";
+            if (boxSelectState) {
+                boxSelectState = null;
+                selectRectEl.style.display = "none";
+            }
             endRightDrag(true);
         });
         canvas.addEventListener("wheel", (e) => {
             if (viewerMode !== "ply") return;
+            if (projectionMode === "ortho") {
+                const zoomDelta = e.deltaY < 0 ? 1.08 : (1 / 1.08);
+                setOrthoZoomFactor(orthoZoomFactor * zoomDelta);
+                e.stopPropagation();
+                e.preventDefault();
+                return;
+            }
             if (!rightDragState) return;
             // Block zoom changes while model drag is active.
             e.stopPropagation();
@@ -1984,6 +4160,36 @@
             const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
             keysDown.add(k);
             if ("wasdqerftg+-jluoik".includes(k)) e.preventDefault();
+            if (!e.repeat && k === "Delete") {
+                e.preventDefault();
+                removeSelectedModels();
+            }
+            if ((e.ctrlKey || e.metaKey) && k === "a") {
+                e.preventDefault();
+                selectAllModels();
+            }
+            if (k === "Escape") {
+                clearSelection();
+            }
+            if (viewerMode === "ply" && projectionMode === "ortho") {
+                if (e.shiftKey && k === "w") {
+                    e.preventDefault();
+                    fitOrthoToActiveModel();
+                }
+                if ((e.ctrlKey || e.metaKey) && k === "h") {
+                    e.preventDefault();
+                    setOrthoZoomFactor(1.0);
+                    setStatus("Ortho 1:1 view applied.");
+                }
+                if ((e.ctrlKey || e.metaKey) && (k === "+" || k === "=")) {
+                    e.preventDefault();
+                    setOrthoZoomFactor(orthoZoomFactor * 1.15);
+                }
+                if ((e.ctrlKey || e.metaKey) && k === "-") {
+                    e.preventDefault();
+                    setOrthoZoomFactor(orthoZoomFactor / 1.15);
+                }
+            }
             const activeModel = currentSplatMesh ? loadedModels.find((x) => x.mesh === currentSplatMesh) : null;
             if (!transformActionActive && ("qerftgjluoik+-=".includes(k)) && !(activeModel && activeModel.locked)) {
                 transformActionActive = true;
@@ -2008,9 +4214,21 @@
         });
         window.addEventListener("blur", () => keysDown.clear());
         window.addEventListener("beforeunload", (e) => {
-            if (!isProjectDirty) return;
+            if (!isProjectDirty || closeBypassGuard) return;
             e.preventDefault();
             e.returnValue = "";
+            if (!pendingCloseRequest) {
+                pendingCloseRequest = true;
+                showCloseModal();
+            }
+        });
+        window.addEventListener("pagehide", () => {
+            if (isProjectDirty) saveRecoverySnapshot("pagehide");
+        });
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "hidden" && isProjectDirty) {
+                saveRecoverySnapshot("hidden");
+            }
         });
 
         scene.onBeforeRenderObservable.add(() => {
@@ -2094,21 +4312,608 @@
         camera.wheelPrecision = 21 - Number(zoomSpeedInput.value);
         dragSensitivity = Number(dragSensInput.value);
         dragSensLabel.textContent = dragSensitivity.toFixed(2);
+        splatScaleLabel.textContent = Number(splatScaleInput.value).toFixed(2) + "x";
+        splatOpacityLabel.textContent = String(Math.round(Number(splatOpacityInput.value))) + "%";
+        brushRadiusPx = Math.max(8, Number(brushRadiusInput.value) || 40);
+        brushRadiusLabel.textContent = String(Math.round(brushRadiusPx)) + " px";
+        brushMode = brushModeSelect.value || "replace";
+        updateOrthoOverlayStyle();
         applyQualityPreset(qualitySelect.value);
         setGridVisible(false);
         setAxesVisible(false);
         updateSplatInfoPanel();
         refreshModelList();
+        updateSelectionStats();
+        refreshSelectionSetOptions();
         pushHistory("Initial state", { markDirty: false });
         markDirty(false);
         switchViewerMode("ply");
+        setProjectionMode("perspective");
+        setOrthoZoomFactor(1.0);
+        syncPointerButtonsForTools();
         positionToggleButton();
+        setTimeout(() => {
+            tryRestoreRecoverySnapshot().catch((err) => {
+                logMessage("Recovery restore failed: " + (err.message || String(err)), "WARN");
+            });
+        }, 200);
 
-        engine.runRenderLoop(() => scene.render());
+        engine.runRenderLoop(() => {
+            syncPlyBasemapCamera();
+            scene.render();
+        });
         window.addEventListener("resize", () => {
             engine.resize();
+            updateOrthoFrustum();
             positionToggleButton();
+            if (viewerMode === "3dtiles" && window.GViewTiles) {
+                window.GViewTiles.setActive(true);
+            }
+            if (viewerMode === "ply" && plyBasemapEnabled && window.GViewTiles) {
+                window.GViewTiles.setActive(true);
+                syncPlyBasemapCamera();
+            }
         });
+    </script>
+
+    <script type="module">
+        const sceneEl = document.getElementById("gviewArcgisScene");
+        let GaussianSplatLayer;
+        let Camera;
+        let Point;
+        let projectionEngine;
+        let viewElement;
+        let splatLayer = null;
+        let ready = false;
+        let overviewCamera = null;
+        let closeupCamera = null;
+        let lastStatus = "ArcGIS viewer idle.";
+        let backdropMode = false;
+        const backdropSpatialReference = { wkid: 102100, latestWkid: 3857 };
+        const webMercatorSr = { wkid: 3857 };
+        let distanceWidget = null;
+        let measureGraphicsLayer = null;
+        let measureAngleMode = false;
+        const measureAnglePoints = [];
+        let measureClickHandle = null;
+        let measureImports = null;
+
+        function setMeasureHint(message) {
+            window.gviewMeasureHint?.(message);
+        }
+
+        async function ensureMeasureImports() {
+            if (measureImports) return measureImports;
+            const [
+                DirectLineMeasurement3D,
+                GraphicsLayer,
+                Graphic,
+                Polyline,
+                SimpleLineSymbol,
+                SimpleMarkerSymbol,
+                TextSymbol,
+            ] = await $arcgis.import([
+                "@arcgis/core/widgets/DirectLineMeasurement3D.js",
+                "@arcgis/core/layers/GraphicsLayer.js",
+                "@arcgis/core/Graphic.js",
+                "@arcgis/core/geometry/Polyline.js",
+                "@arcgis/core/symbols/SimpleLineSymbol.js",
+                "@arcgis/core/symbols/SimpleMarkerSymbol.js",
+                "@arcgis/core/symbols/TextSymbol.js",
+            ]);
+            measureImports = {
+                DirectLineMeasurement3D,
+                GraphicsLayer,
+                Graphic,
+                Polyline,
+                SimpleLineSymbol,
+                SimpleMarkerSymbol,
+                TextSymbol,
+            };
+            return measureImports;
+        }
+
+        async function ensureMeasureTools() {
+            await ensureReady();
+            const imports = await ensureMeasureImports();
+            if (!measureGraphicsLayer) {
+                measureGraphicsLayer = new imports.GraphicsLayer({ title: "GView measurements" });
+                viewElement.map.add(measureGraphicsLayer);
+            }
+            if (!distanceWidget && viewElement.view) {
+                distanceWidget = new imports.DirectLineMeasurement3D({
+                    view: viewElement.view,
+                    unit: "meters",
+                });
+                distanceWidget.visible = false;
+                viewElement.view.ui.add(distanceWidget, "bottom-right");
+            }
+        }
+
+        function stopTilesAngleMeasure() {
+            measureAngleMode = false;
+            measureAnglePoints.length = 0;
+            if (measureClickHandle) {
+                measureClickHandle.remove();
+                measureClickHandle = null;
+            }
+        }
+
+        function clearTilesAngleGraphics() {
+            measureGraphicsLayer?.removeAll();
+        }
+
+        async function onTilesAngleClick(event) {
+            if (!measureAngleMode || !viewElement?.view) return;
+            const {
+                Graphic,
+                Polyline,
+                SimpleLineSymbol,
+                SimpleMarkerSymbol,
+                TextSymbol,
+            } = await ensureMeasureImports();
+            const response = await viewElement.view.hitTest(event);
+            const withPoint = response.results.find((r) => r.mapPoint);
+            if (!withPoint) {
+                setMeasureHint("No surface hit. Click the model, ground, or basemap.");
+                return;
+            }
+            const p = withPoint.mapPoint.clone();
+            if (p.z == null) p.z = 0;
+            measureAnglePoints.push(p);
+            measureGraphicsLayer.add(new Graphic({
+                geometry: p,
+                symbol: new SimpleMarkerSymbol({
+                    style: "circle",
+                    color: [255, 140, 0, 0.95],
+                    size: 9,
+                    outline: { color: [255, 255, 255, 1], width: 1 },
+                }),
+            }));
+            if (measureAnglePoints.length === 1) {
+                setMeasureHint("Point A set. Click vertex B (center of angle).");
+            } else if (measureAnglePoints.length === 2) {
+                setMeasureHint("Vertex B set. Click point C.");
+            } else if (measureAnglePoints.length >= 3) {
+                const [A, B, C] = measureAnglePoints;
+                const v1 = { x: A.x - B.x, y: A.y - B.y, z: (A.z ?? 0) - (B.z ?? 0) };
+                const v2 = { x: C.x - B.x, y: C.y - B.y, z: (C.z ?? 0) - (B.z ?? 0) };
+                const d1 = Math.hypot(v1.x, v1.y, v1.z);
+                const d2 = Math.hypot(v2.x, v2.y, v2.z);
+                let deg = null;
+                if (d1 > 0 && d2 > 0) {
+                    let cos = (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z) / (d1 * d2);
+                    cos = Math.min(1, Math.max(-1, cos));
+                    deg = (Math.acos(cos) * 180) / Math.PI;
+                }
+                const line = new Polyline({
+                    paths: [[[A.x, A.y, A.z ?? 0], [B.x, B.y, B.z ?? 0], [C.x, C.y, C.z ?? 0]]],
+                    spatialReference: A.spatialReference,
+                });
+                measureGraphicsLayer.add(new Graphic({
+                    geometry: line,
+                    symbol: new SimpleLineSymbol({ color: [255, 140, 0, 0.9], width: 2 }),
+                }));
+                if (deg != null) {
+                    measureGraphicsLayer.add(new Graphic({
+                        geometry: B,
+                        symbol: new TextSymbol({
+                            text: deg.toFixed(1) + "°",
+                            color: [20, 20, 20, 1],
+                            haloColor: [255, 255, 255, 0.85],
+                            haloSize: 2,
+                            font: { size: 13, weight: "bold" },
+                            yoffset: 18,
+                        }),
+                    }));
+                    setMeasureHint("Angle at B: " + deg.toFixed(2) + "°");
+                }
+                stopTilesAngleMeasure();
+            }
+        }
+
+        async function startDistanceMeasure() {
+            await ensureMeasureTools();
+            stopTilesAngleMeasure();
+            clearTilesAngleGraphics();
+            distanceWidget.visible = true;
+            distanceWidget.viewModel.clear();
+            if (typeof distanceWidget.start === "function") {
+                await distanceWidget.start();
+            } else {
+                await distanceWidget.viewModel.start();
+            }
+            setMeasureHint("3D distance active (panel bottom-right): place two points.");
+        }
+
+        async function startAngleMeasure() {
+            await ensureMeasureTools();
+            if (distanceWidget) {
+                distanceWidget.viewModel.clear();
+                distanceWidget.visible = false;
+            }
+            clearTilesAngleGraphics();
+            stopTilesAngleMeasure();
+            measureAngleMode = true;
+            measureAnglePoints.length = 0;
+            measureClickHandle = viewElement.view.on("click", onTilesAngleClick);
+            setMeasureHint("Angle mode: click A, vertex B, then C.");
+        }
+
+        async function clearMeasurements() {
+            stopTilesAngleMeasure();
+            if (distanceWidget) {
+                distanceWidget.viewModel.clear();
+                distanceWidget.visible = false;
+            }
+            clearTilesAngleGraphics();
+            setMeasureHint("Measurements cleared.");
+        }
+
+        async function ensureProjection() {
+            if (projectionEngine) return;
+            [Point, projectionEngine] = await $arcgis.import([
+                "@arcgis/core/geometry/Point.js",
+                "@arcgis/core/geometry/projection.js",
+            ]);
+            await projectionEngine.load();
+        }
+
+        async function extentToGeoAnchor(extent) {
+            if (!extent) return null;
+            await ensureProjection();
+            const cx = (extent.xmin + extent.xmax) / 2;
+            const cy = (extent.ymin + extent.ymax) / 2;
+            const cz = ((extent.zmin ?? 0) + (extent.zmax ?? 0)) / 2;
+            const sr = extent.spatialReference || { wkid: 4326 };
+            const pt = new Point({ x: cx, y: cy, z: cz, spatialReference: sr });
+            let projected = pt;
+            const wkid = sr.wkid || sr.latestWkid;
+            if (wkid !== 3857 && wkid !== 102100) {
+                projected = projectionEngine.project(pt, webMercatorSr);
+            }
+            if (!projected) return null;
+            return {
+                x: projected.x,
+                y: projected.y,
+                z: projected.z ?? cz,
+                scale: 1,
+                spatialReference: webMercatorSr,
+            };
+        }
+
+        function tilesLog(message, level = "INFO") {
+            lastStatus = message;
+            window.gviewTilesStatus?.(message);
+            window.gviewTilesLog?.(message, level);
+        }
+
+        async function waitForArcGIS() {
+            for (let i = 0; i < 240; i++) {
+                if (window.$arcgis) return;
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+            throw new Error("ArcGIS Maps SDK failed to load (check network).");
+        }
+
+        function isSceneVisible() {
+            const wrap = document.getElementById("arcgisSceneWrap");
+            return wrap && (wrap.classList.contains("active") || wrap.classList.contains("backdrop"));
+        }
+
+        async function waitForVisibleScene() {
+            for (let i = 0; i < 80; i++) {
+                if (isSceneVisible()) {
+                    const rect = sceneEl.getBoundingClientRect();
+                    if (rect.width > 64 && rect.height > 64) return;
+                }
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+            tilesLog("Scene panel visible wait timed out; continuing anyway.", "WARN");
+        }
+
+        function resizeView() {
+            if (!viewElement) return;
+            const view = viewElement.view;
+            if (view && typeof view.resize === "function") {
+                view.resize();
+                return;
+            }
+            // arcgis-scene web components auto-size from the host element in SDK 5.x.
+            void sceneEl?.offsetHeight;
+            void sceneEl?.getBoundingClientRect?.();
+        }
+
+        function scheduleResize() {
+            resizeView();
+            setTimeout(resizeView, 80);
+            setTimeout(resizeView, 250);
+            setTimeout(resizeView, 700);
+        }
+
+        function setBackdropMode(value) {
+            backdropMode = Boolean(value);
+        }
+
+        async function enableBasemapBackdrop() {
+            backdropMode = true;
+            await ensureReady();
+            if (viewElement?.map) {
+                viewElement.map.basemap = "satellite";
+                viewElement.map.ground = "world-elevation";
+            }
+            scheduleResize();
+        }
+
+        async function disableBasemapBackdrop() {
+            backdropMode = false;
+            if (!splatLayer && viewElement?.map) {
+                viewElement.map.basemap = null;
+                viewElement.map.ground = null;
+            }
+        }
+
+        function syncBackdropCamera(state) {
+            if (!ready || !backdropMode || !viewElement || !Camera || !state) return;
+            const anchor = state.anchor || {};
+            const localOrigin = state.localOrigin || { x: 0, y: 0, z: 0 };
+            const ax = Number(anchor.x) || 0;
+            const ay = Number(anchor.y) || 0;
+            const az = Number(anchor.z) || 200;
+            const scale = Number(anchor.scale) || 1;
+            const target = state.target || {};
+            const relX = (Number(target.x) || 0) - (Number(localOrigin.x) || 0);
+            const relY = (Number(target.y) || 0) - (Number(localOrigin.y) || 0);
+            const relZ = (Number(target.z) || 0) - (Number(localOrigin.z) || 0);
+            const lookAtX = ax + relX * scale;
+            const lookAtY = ay - relZ * scale;
+            const lookAtZ = az + relY * scale;
+            const alpha = Number(state.alpha) || 0;
+            const beta = Number(state.beta) || 1;
+            const radius = Math.max(Number(state.radius) || 10, 1) * scale;
+            const sinA = Math.sin(alpha);
+            const cosA = Math.cos(alpha);
+            const sinB = Math.sin(beta);
+            const cosB = Math.cos(beta);
+            const ox = radius * cosA * sinB;
+            const oy = radius * sinA * sinB;
+            const oz = radius * cosB;
+            const heading = (((alpha * 180) / Math.PI) + 90 + 360) % 360;
+            const tilt = Math.max(0.1, Math.min(89, 90 - (beta * 180) / Math.PI));
+            const sr = anchor.spatialReference || backdropSpatialReference;
+            viewElement.camera = new Camera({
+                position: {
+                    x: lookAtX + ox,
+                    y: lookAtY - oz,
+                    z: lookAtZ + oy,
+                    spatialReference: sr,
+                },
+                heading,
+                tilt,
+            });
+        }
+
+        async function getLayerGeoCenter() {
+            if (!splatLayer?.fullExtent) return null;
+            return extentToGeoAnchor(splatLayer.fullExtent);
+        }
+
+        async function fetchGeoCenterFromTileset(url) {
+            if (!url) return null;
+            await ensureReady();
+            const probe = new GaussianSplatLayer({
+                url,
+                elevationInfo: { mode: "absolute-height", offset: 10 },
+            });
+            try {
+                await probe.load();
+                if (!probe.fullExtent) return null;
+                return extentToGeoAnchor(probe.fullExtent);
+            } finally {
+                probe.destroy();
+            }
+        }
+
+        async function ensureReady() {
+            await waitForArcGIS();
+            await customElements.whenDefined("arcgis-scene");
+            await waitForVisibleScene();
+            if (!ready) {
+                [GaussianSplatLayer, Camera] = await $arcgis.import([
+                    "@arcgis/core/layers/GaussianSplatLayer.js",
+                    "@arcgis/core/Camera.js",
+                ]);
+                viewElement = sceneEl;
+                await viewElement.viewOnReady();
+                ready = true;
+                tilesLog("ArcGIS SceneView ready.");
+            }
+            scheduleResize();
+        }
+
+        function buildCamerasFromExtent(extent) {
+            if (!extent || !Camera) return;
+            const cx = (extent.xmin + extent.xmax) / 2;
+            const cy = (extent.ymin + extent.ymax) / 2;
+            const zmin = extent.zmin ?? 0;
+            const zmax = extent.zmax ?? 0;
+            const cz = (zmin + zmax) / 2;
+            const size = Math.max(extent.width, extent.height, (zmax - zmin), 40);
+            const sr = extent.spatialReference;
+            overviewCamera = new Camera({
+                position: { x: cx, y: cy - size * 1.5, z: cz + size * 2.8, spatialReference: sr },
+                heading: 50,
+                tilt: 10,
+            });
+            closeupCamera = new Camera({
+                position: { x: cx, y: cy - size * 0.35, z: cz + size * 1.1, spatialReference: sr },
+                heading: 50,
+                tilt: 10,
+            });
+        }
+
+        async function frameToLayer() {
+            for (let attempt = 0; attempt < 8; attempt++) {
+                if (splatLayer?.fullExtent) {
+                    buildCamerasFromExtent(splatLayer.fullExtent);
+                }
+                if (overviewCamera) {
+                    viewElement.camera = overviewCamera;
+                    scheduleResize();
+                    tilesLog("Camera set to overview.");
+                    return true;
+                }
+                try {
+                    if (splatLayer?.fullExtent) {
+                        await viewElement.goTo(splatLayer.fullExtent.expand(1.3), { duration: 0 });
+                        buildCamerasFromExtent(splatLayer.fullExtent);
+                        scheduleResize();
+                        tilesLog("Framed with layer fullExtent.");
+                        return true;
+                    }
+                } catch (_) {}
+                try {
+                    await viewElement.goTo({ target: splatLayer, tilt: 65, heading: 50 }, { duration: 0 });
+                    if (splatLayer?.fullExtent) buildCamerasFromExtent(splatLayer.fullExtent);
+                    scheduleResize();
+                    tilesLog("Framed with goTo(target=layer).");
+                    return true;
+                } catch (_) {}
+                await new Promise((resolve) => setTimeout(resolve, 400));
+                try {
+                    await splatLayer.load();
+                } catch (_) {}
+            }
+            scheduleResize();
+            tilesLog("Could not auto-frame. Try Zoom To Layer or Overview.", "WARN");
+            return false;
+        }
+
+        async function loadTileset(url, opts = {}) {
+            await ensureReady();
+            if (splatLayer) {
+                viewElement.map.remove(splatLayer);
+                splatLayer.destroy();
+                splatLayer = null;
+                overviewCamera = null;
+                closeupCamera = null;
+            }
+            splatLayer = new GaussianSplatLayer({
+                url,
+                elevationInfo: {
+                    mode: "absolute-height",
+                    offset: Number(opts.elevationOffset) || 10,
+                },
+            });
+            // Match working demo: add layer first, frame immediately, load in background.
+            viewElement.map.add(splatLayer);
+            scheduleResize();
+            tilesLog("GaussianSplatLayer added, loading tiles...");
+            frameToLayer();
+            try {
+                await splatLayer.load();
+            } catch (err) {
+                tilesLog("Layer load warning: " + (err?.message || String(err)), "WARN");
+            }
+            if (viewElement.view) {
+                try {
+                    await viewElement.view.whenLayerView(splatLayer);
+                    tilesLog("Layer view created.");
+                } catch (err) {
+                    tilesLog("Layer view wait: " + (err?.message || String(err)), "WARN");
+                }
+            }
+            await frameToLayer();
+            const geoCenter = await getLayerGeoCenter();
+            if (geoCenter) {
+                window.cachedTilesGeoCenter = geoCenter;
+                tilesLog("Cached tileset geo center for PLY basemap alignment.");
+            }
+            tilesLog("Tileset ready at " + url);
+        }
+
+        async function clearTileset() {
+            if (!ready || !splatLayer) return;
+            viewElement.map.remove(splatLayer);
+            splatLayer.destroy();
+            splatLayer = null;
+            overviewCamera = null;
+            closeupCamera = null;
+            tilesLog("Tileset cleared.");
+        }
+
+        function toggleBasemap() {
+            if (!viewElement?.map) return;
+            if (viewElement.map.basemap) {
+                viewElement.map.basemap = null;
+                viewElement.map.ground = null;
+                tilesLog("Basemap off.");
+            } else {
+                viewElement.map.basemap = "satellite";
+                viewElement.map.ground = "world-elevation";
+                tilesLog("Basemap on.");
+            }
+            backdropMode = Boolean(splatLayer) ? false : backdropMode;
+            scheduleResize();
+        }
+
+        async function zoomToLayer() {
+            if (!splatLayer) throw new Error("No tileset loaded.");
+            try {
+                await splatLayer.load();
+            } catch (_) {}
+            await frameToLayer();
+        }
+
+        async function goToOverview() {
+            if (!splatLayer) throw new Error("No tileset loaded.");
+            if (!overviewCamera) {
+                await zoomToLayer();
+            }
+            if (!overviewCamera) throw new Error("Overview camera not available yet.");
+            await viewElement.goTo(overviewCamera, { duration: 800 });
+            tilesLog("Overview view.");
+        }
+
+        async function goToCloseup() {
+            if (!splatLayer) throw new Error("No tileset loaded.");
+            if (!closeupCamera) {
+                await zoomToLayer();
+            }
+            if (!closeupCamera) throw new Error("Close-up camera not available yet.");
+            await viewElement.goTo(closeupCamera, { duration: 800 });
+            tilesLog("Close-up view.");
+        }
+
+        function setActive() {
+            scheduleResize();
+        }
+
+        function getStatus() {
+            return lastStatus;
+        }
+
+        window.GViewTiles = {
+            loadTileset,
+            clearTileset,
+            toggleBasemap,
+            zoomToLayer,
+            goToOverview,
+            goToCloseup,
+            setActive,
+            ensureReady,
+            enableBasemapBackdrop,
+            disableBasemapBackdrop,
+            syncBackdropCamera,
+            setBackdropMode,
+            getLayerGeoCenter,
+            fetchGeoCenterFromTileset,
+            startDistanceMeasure,
+            startAngleMeasure,
+            clearMeasurements,
+            getStatus,
+            isReady: () => ready,
+        };
     </script>
 </body>
 </html>

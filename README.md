@@ -4,160 +4,86 @@ Desktop viewer for PLY / Gaussian Splat models and ArcGIS 3D Tiles Gaussian Spla
 
 ## Features
 
-- **PLY & Gaussian Splat viewing** powered by Babylon.js
-- **ArcGIS 3D Tiles Gaussian Splat layers** with auto-framing and overview
-- **Satellite Basemap alignment** matching model origin to geographic coordinates
-- **Perspective & Orthographic projection modes** with 1:1 view and custom ortho zoom
-- **Ortho Photo & GeoTIFF raster overlay** with opacity blending and fit controls
-- **Interactive 3D distance and 3-point angle measurement tools**
-- **Model hierarchy & multi-selection tools** (box select, brush select, refine, isolate, hide, lock, layer assignments, and double-click rename)
-- **Built-in HTTP 3D Tiles Server** with CORS, HTTP 206 Range streaming, and auto-discovery
-- **Native Windows file dialogs** for saving and opening projects (`.pvproj`)
-- **Keyboard shortcuts cheat sheet** (press `F1` or click `?` in header)
-
-## Requirements
-
-- **Windows 10/11** (for the desktop app)
-- **Node.js 18+** (only needed to build or run from source)
-- **Git** (to clone the repository)
+- **Instant Startup**: Self-contained native Windows executable (`GView.exe`) with zero required runtimes or npm install.
+- **AppBridge Integration**: Launch, monitor, and synchronize directly through AppBridge.
+- **PLY & Gaussian Splat viewing** powered by Babylon.js with full GPU hardware acceleration.
+- **ArcGIS 3D Tiles Gaussian Splat layers** with auto-framing, overview, and satellite basemap.
+- **Satellite Basemap alignment** matching model origin to geographic coordinates.
+- **Perspective & Orthographic projection modes** with 1:1 view and custom ortho zoom.
+- **Ortho Photo & GeoTIFF raster overlay** with opacity blending and fit controls.
+- **Interactive 3D distance and 3-point angle measurement tools**.
+- **Model hierarchy & multi-selection tools** (box select, brush select, refine, isolate, hide, lock, layer assignments, and double-click rename).
+- **Built-in HTTP 3D Tiles Server** with CORS, HTTP 206 Range streaming, and auto-discovery.
+- **Native Windows file dialogs** for saving and opening projects (`.pvproj`).
+- **Keyboard shortcuts cheat sheet** (press `F1` or click `?` in header).
 
 ---
 
-## How to Install (Step by Step)
+## Quick Start (Zero Setup)
 
-### Option A — Install the desktop app (recommended)
+GView is ready to run immediately after cloning:
 
-Use this if you want a normal Windows app with a Start Menu shortcut.
-
-1. **Install Node.js** (if you do not already have it)
-   - Download from [https://nodejs.org](https://nodejs.org) (LTS version)
-   - Run the installer and keep the default options
-   - Open **PowerShell** or **Command Prompt** and verify:
-     ```bash
-     node -v
-     npm -v
-     ```
-
-2. **Clone this repository**
+1. **Clone the repository** (or synchronize via AppBridge):
    ```bash
    git clone https://github.com/jeyaramjeeva/GView.git
    cd GView
    ```
 
-3. **Install dependencies**
-   ```bash
-   npm install
-   # or on Windows PowerShell if execution policies block .ps1 scripts:
-   npm.cmd install
-   ```
-   Wait until it finishes (this downloads Electron and build tools).
-
-4. **Build the Windows installer**
-   ```bash
-   npm run build
-   # or on Windows PowerShell:
-   npm.cmd run build
-   ```
-   - Close any running **GView** or **Electron** windows first, or the build may fail with a file-lock error.
-   - When it completes, the installer is created in the `dist` folder.
-
-5. **Run the installer**
-   - Open the `dist` folder
-   - Double-click **`GView Setup 1.3.0.exe`**
-   - Choose an install location when prompted
-   - Finish the setup wizard
-
-6. **Launch GView**
-   - Open **GView** from the Start Menu, or run it from your chosen install folder.
+2. **Launch GView**:
+   - Double-click **`GView.exe`** (or run `Launch GView.bat`).
+   - The application opens instantly with full 3D rendering and tile server capabilities.
 
 ---
 
-### Option B — Run from source (no installer)
+## First Steps After Launch
 
-Use this for quick testing or development.
-
-1. **Install Node.js 18+** (see Option A, step 1)
-
-2. **Clone and enter the project**
-   ```bash
-   git clone https://github.com/jeyaramjeeva/GView.git
-   cd GView
-   ```
-
-3. **Install dependencies**
-   ```bash
-   npm install
-   # or: npm.cmd install
-   ```
-
-4. **Start the app**
-   ```bash
-   npm start
-   # or: npm.cmd start
-   ```
-
-GView opens in an Electron window. No installer is created.
-
----
-
-## First Steps After Install
-
-### Option 1 — Open a 3D Tileset (e.g. `GS Result\3d_tiles`)
+### 1. Open a 3D Tileset (e.g. `GS Result\3d_tiles`)
 
 1. Launch **GView**.
 2. Click the **3D Tiles (GIS)** button at the top of the controls panel.
 3. Choose either:
-   - **Drag & Drop**: Drag `tileset.json` or the `3d_tiles` folder directly into the window.
-   - **Select tileset.json**: Click the **Select tileset.json** button and pick the file.
    - **Browse Folder**: Click **Browse Folder** and select `GS Result` or `GS Result\3d_tiles`.
+   - **Select tileset.json**: Click the **Select tileset.json** button and pick `tileset.json`.
+   - **Drag & Drop**: Drag `tileset.json` or the `3d_tiles` folder directly into the window.
 4. GView automatically starts the local CORS-enabled tile server and streams the Gaussian Splat tileset over the real-world satellite terrain.
 5. Use **Overview**, **Close-up**, or **Zoom To Layer** to navigate.
 
-### Option 2 — Open a PLY Splat (e.g. `GS Result\ply\Gaussian_Splats-L0.ply`)
+### 2. Open a PLY Splat (e.g. `GS Result\ply\Gaussian_Splats-L0.ply`)
 
 1. Launch **GView**.
 2. Click **PLY Splats** at the top of the controls panel.
 3. Either drag & drop any `.ply` file into the window, or enter the path / click **Import**.
 4. Use the mouse to orbit (Left Drag), pan (Right Drag), and zoom (Wheel).
 
-### Optional: Satellite Basemap in PLY mode
+### 3. Satellite Basemap in PLY mode
 
 1. Load a PLY model.
 2. In the **Scene** tab, enable **Satellite Basemap**.
 3. Click **Align to Model** to align the satellite map with your model origin.
 
-### Measure distances and angles
+### 4. Measure distances and angles
 
-1. Open the **Measure** tab
-2. Choose **Distance** or **Angle**
-3. Click points in the 3D view to place measurements
+1. Open the **Measure** tab.
+2. Choose **Distance** or **Angle**.
+3. Click points in the 3D view to place measurements.
 
 ---
 
-## Development
+## Alternative: Run via Node.js / Electron (Development)
+
+Developers modifying the web frontend or electron wrappers can also run via npm:
 
 ```bash
 npm install
 npm start
 ```
 
-## Build installer only
-
+To build a standalone Electron installer package:
 ```bash
 npm run build
 ```
 
-Output goes to the `dist` folder (or a custom `directories.output` path if configured).
-
-## 3D Tiles notes
-
-In the desktop app, **Browse Folder** is the easiest way to load local tiles. GView serves `tileset.json` over `http://127.0.0.1` with CORS enabled.
-
-For browser-only testing (without Electron), serve tiles with CORS enabled, for example:
-
-```bash
-npx http-server --cors -g -c-1
-```
+---
 
 ## License
 

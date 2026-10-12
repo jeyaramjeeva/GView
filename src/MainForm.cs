@@ -65,8 +65,11 @@ namespace GView
                     "GView",
                     "WebView2Profile");
 
+                Program.Log("Creating WebView2 environment in: " + profileDir);
                 var env = await CoreWebView2Environment.CreateAsync(null, profileDir);
+                Program.Log("Ensuring CoreWebView2Async...");
                 await _webView.EnsureCoreWebView2Async(env);
+                Program.Log("CoreWebView2 ensured.");
 
                 var settings = _webView.CoreWebView2.Settings;
                 settings.AreDevToolsEnabled = true;
@@ -87,11 +90,16 @@ namespace GView
                 {
                     if (!e.IsSuccess)
                     {
+                        Program.Log("Navigation failed: " + e.WebErrorStatus);
                         MessageBox.Show(
                             "Failed to load application interface: " + e.WebErrorStatus,
                             "GView Load Error",
                             MessageBoxButtons.OK,
                             MessageBoxIcon.Error);
+                    }
+                    else
+                    {
+                        Program.Log("Navigation succeeded.");
                     }
                 };
 
@@ -158,10 +166,12 @@ namespace GView
                 await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(bridgeShim);
 
                 // Navigate to PlyViewer.html on virtual host
+                Program.Log("Navigating to https://gview.local/PlyViewer.html");
                 _webView.CoreWebView2.Navigate("https://gview.local/PlyViewer.html");
             }
             catch (Exception ex)
             {
+                Program.Log("Exception in InitializeWebViewAsync: " + ex);
                 MessageBox.Show(
                     "Error initializing GView WebView2 environment:\n\n" + ex.Message,
                     "GView Initialization Error",

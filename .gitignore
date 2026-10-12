@@ -5,3 +5,5 @@ dist-*/
 .DS_Store
 Thumbs.db
 3D_TILES_Viewer/Node/node-v*/
+*.csv
+.vscode/

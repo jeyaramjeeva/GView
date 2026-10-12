@@ -115,14 +115,15 @@
             margin-bottom: 10px;
         }
         #appLogo {
-            width: 56px;
-            height: 56px;
+            width: 52px;
+            height: 52px;
             object-fit: contain;
-            border-radius: 8px;
-            border: 1px solid rgba(158, 194, 255, 0.35);
-            background: rgba(9, 14, 24, 0.35);
-            padding: 2px;
+            border-radius: 12px;
+            border: 1px solid rgba(158, 194, 255, 0.22);
+            background: rgba(14, 22, 38, 0.55);
+            padding: 4px;
             flex-shrink: 0;
+            filter: drop-shadow(0 4px 12px rgba(50, 140, 255, 0.28));
         }
 
         #uiTitle {
@@ -145,6 +146,38 @@
 
         .row { display: flex; gap: 8px; margin-bottom: 8px; }
         .row > * { flex: 1; }
+        #modeSwitchBar {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 10px;
+            background: rgba(10, 16, 28, 0.75);
+            padding: 4px;
+            border-radius: 10px;
+            border: 1px solid rgba(132, 172, 245, 0.22);
+        }
+        .modeTabBtn {
+            flex: 1;
+            padding: 8px 6px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            border-radius: 7px;
+            background: transparent;
+            border: 1px solid transparent;
+            color: #9fb0d4;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .modeTabBtn:hover {
+            color: #e8eefc;
+            background: rgba(255, 255, 255, 0.06);
+        }
+        .modeTabBtn.active {
+            background: linear-gradient(135deg, #2b62cc, #4f8cff);
+            color: #ffffff;
+            border-color: rgba(179, 210, 255, 0.5);
+            box-shadow: 0 2px 10px rgba(43, 98, 204, 0.45);
+        }
         #tabsBar {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
@@ -476,24 +509,45 @@
     <button id="toggleUiBtn">Hide Controls</button>
     <div id="ui">
         <div id="uiHeader">
-            <img id="appLogo" src="file:///C:/Users/Jjeyara/Downloads/LogoNew.png" alt="GView Logo">
-            <div id="uiTitle">GView</div>
+            <img id="appLogo" src="assets/icon.png" alt="GView Logo" onerror="this.style.display='none'; document.getElementById('logoSvgFallback').style.display='block';">
+            <svg id="logoSvgFallback" style="display:none; width:44px; height:44px; flex-shrink:0;" viewBox="0 0 48 48" fill="none">
+                <rect width="48" height="48" rx="10" fill="#141f36" stroke="rgba(97, 199, 255, 0.4)" stroke-width="1.5"/>
+                <path d="M24 10 L38 18 L38 30 L24 38 L10 30 L10 18 Z" stroke="#61c7ff" stroke-width="2.5" fill="rgba(79, 140, 255, 0.25)"/>
+                <path d="M24 10 L24 38" stroke="#61c7ff" stroke-width="1.5" stroke-dasharray="2 2"/>
+                <path d="M10 18 L38 30" stroke="#61c7ff" stroke-width="1.5" stroke-dasharray="2 2"/>
+                <path d="M38 18 L10 30" stroke="#61c7ff" stroke-width="1.5" stroke-dasharray="2 2"/>
+            </svg>
+            <div style="flex:1;">
+                <div id="uiTitle">GView</div>
+                <div style="font-size:11px; color:var(--text-muted);">PLY &amp; 3D Tiles Viewer</div>
+            </div>
+            <button id="shortcutsBtn" class="secondary" title="Keyboard &amp; Mouse Controls" style="width:30px; height:30px; padding:0; font-size:14px; font-weight:bold; border-radius:50%; flex:none;">?</button>
         </div>
-        <label>Viewer Mode</label>
-        <select id="viewerModeSelect">
+        <div id="modeSwitchBar">
+            <button id="modePlyBtn" class="modeTabBtn active" type="button">PLY Splats</button>
+            <button id="mode3dBtn" class="modeTabBtn" type="button">3D Tiles (GIS)</button>
+        </div>
+        <select id="viewerModeSelect" style="display:none;">
             <option value="ply" selected>PLY / Gaussian Splat</option>
             <option value="3dtiles">3D Tiles (Gaussian Splat)</option>
         </select>
         <div id="plyModeControls">
         <div class="row">
             <button id="importBtn">Import</button>
-            <input id="importSourceInput" type="text" placeholder=".ply path/URL">
+            <input id="importSourceInput" type="text" placeholder=".ply path or URL">
             <button id="clearAllBtn" class="warning">Clear</button>
         </div>
         </div>
         <div id="tilesLoaderSection">
-            <label>Tileset URL</label>
-            <input id="tilesetUrlInput" type="text" placeholder="http://127.0.0.1:8080/tileset.json" value="http://127.0.0.1:8080/tileset.json">
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px; line-height:1.4;">
+                View 3D Tilesets on globe terrain with satellite imagery.
+            </div>
+            <div class="row">
+                <button id="browseTilesetFolderBtn" class="secondary" title="Select directory containing tileset.json">Browse Folder</button>
+                <button id="browseTilesetFileBtn" class="secondary" title="Select tileset.json directly">Select tileset.json</button>
+            </div>
+            <label>Tileset URL / Local Server</label>
+            <input id="tilesetUrlInput" type="text" placeholder="http://127.0.0.1:8080/tileset.json" value="">
             <div class="row">
                 <button id="loadTilesBtn">Load Tiles</button>
                 <button id="clearTilesBtn" class="warning">Clear</button>
@@ -505,11 +559,10 @@
             </div>
             <div class="row">
                 <button id="tilesBasemapBtn" class="secondary">Toggle Basemap</button>
-                <button id="browseTilesetFolderBtn" class="secondary">Browse Folder</button>
             </div>
             <label>Elevation Offset (m)</label>
-            <input id="tilesElevationInput" type="number" step="0.1" value="10">
-            <div id="tilesStatusText" class="small" style="margin-top:6px;">HTML test: run http-server in your tiles folder, then Load Tiles.</div>
+            <input id="tilesElevationInput" type="number" step="0.5" value="0">
+            <div id="tilesStatusText" class="small" style="margin-top:6px; line-height:1.4;">Tip: Click <b>Select tileset.json</b> or <b>Browse Folder</b>, or drag &amp; drop <b>tileset.json</b> into this window.</div>
         </div>
         <div class="row">
             <button id="saveProjectBtn" class="secondary">Save Project</button>
@@ -641,6 +694,19 @@
                 <button id="saveViewBtn" class="secondary">Save View</button>
                 <button id="restoreViewBtn" class="secondary">Restore View</button>
             </div>
+            <label>Projection</label>
+            <select id="projectionModeSelect">
+                <option value="perspective" selected>Perspective</option>
+                <option value="ortho">Orthographic</option>
+            </select>
+            <div id="orthoControlsSection" style="display:none; margin-top:6px; margin-bottom:8px; padding:8px; background:var(--section-bg); border-radius:8px; border:1px solid var(--section-border);">
+                <div class="row">
+                    <button id="orthoFitBtn" class="secondary">Fit Ortho</button>
+                    <button id="orthoActualBtn" class="secondary">1:1 View</button>
+                </div>
+                <label>Ortho Zoom <span id="orthoZoomLabel">1.00x</span></label>
+                <input id="orthoZoomInput" type="range" min="0.1" max="10" step="0.05" value="1.00">
+            </div>
             <label>Move Speed <span id="moveSpeedLabel">10.0</span></label>
             <input id="moveSpeedInput" type="range" min="1" max="40" step="0.5" value="10">
             <label>Rotate Speed <span id="rotSpeedLabel">1.40</span></label>
@@ -736,7 +802,20 @@
                 <option value="performance">Performance</option>
             </select>
         </div>
-
+        <div class="section">
+            <div class="sectionTitle">Ortho Photo / TIFF Overlay</div>
+            <div class="row">
+                <button id="importOrthoBtn" class="secondary">Load Photo/TIFF</button>
+                <button id="clearOrthoBtn" class="warning">Clear Overlay</button>
+            </div>
+            <label>Overlay Opacity <span id="orthoOpacityLabel">100%</span></label>
+            <input id="orthoOpacityInput" type="range" min="5" max="100" step="1" value="100">
+            <label>Overlay Fit</label>
+            <select id="orthoFitModeSelect">
+                <option value="contain" selected>Contain</option>
+                <option value="cover">Cover</option>
+            </select>
+        </div>
         </div>
 
         <div class="tabSection" data-tab-section="measure">
@@ -811,19 +890,31 @@
             </div>
         </div>
     </div>
-    <div style="display:none;">
-        <div id="orthoPhotoOverlay"><img id="orthoPhotoImg" alt=""><canvas id="orthoPhotoCanvas"></canvas></div>
-        <input type="file" id="orthoImageInput">
-        <button id="importOrthoBtn"></button>
-        <button id="clearOrthoBtn"></button>
-        <select id="projectionModeSelect"><option value="perspective" selected>Perspective</option></select>
-        <button id="orthoFitBtn"></button>
-        <button id="orthoActualBtn"></button>
-        <input id="orthoZoomInput" type="range" value="1.00">
-        <span id="orthoZoomLabel">1.00x</span>
-        <input id="orthoOpacityInput" type="range" value="100">
-        <span id="orthoOpacityLabel">100%</span>
-        <select id="orthoFitModeSelect"><option value="contain" selected>contain</option></select>
+    <div id="orthoPhotoOverlay"><img id="orthoPhotoImg" alt=""><canvas id="orthoPhotoCanvas"></canvas></div>
+    <input type="file" id="orthoImageInput" accept=".png,.jpg,.jpeg,.webp,.tif,.tiff" style="display:none;">
+    <div id="shortcutsModal" style="display:none; position:fixed; inset:0; z-index:99; background:rgba(0,0,0,0.65); backdrop-filter:blur(6px); align-items:center; justify-content:center;">
+        <div style="background:var(--panel-bg); border:1px solid var(--panel-border); border-radius:14px; padding:20px; max-width:480px; width:90%; color:var(--text-main); box-shadow:var(--shadow);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <div style="font-size:16px; font-weight:700;">GView Controls &amp; Shortcuts</div>
+                <button id="closeShortcutsBtn" class="secondary" style="width:28px; height:28px; padding:0; line-height:26px; border-radius:50%;">✕</button>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:12px; max-height:60vh; overflow-y:auto; line-height:1.5;">
+                <div><b>Left Drag:</b> Orbit view</div>
+                <div><b>Right Drag:</b> Pan view</div>
+                <div><b>Mouse Wheel:</b> Zoom in / out</div>
+                <div><b>Double Click:</b> Center orbit pivot on surface</div>
+                <div><b>Shift + Right Drag:</b> Move active model</div>
+                <div><b>WASD:</b> Move camera target</div>
+                <div><b>Q/E, R/F, T/G:</b> Rotate model (Rotate mode)</div>
+                <div><b>J/L, U/O, I/K:</b> Translate model</div>
+                <div><b>+ / - :</b> Scale active model</div>
+                <div><b>Ctrl + Left Drag:</b> Box select models</div>
+                <div><b>Delete:</b> Remove selected models</div>
+                <div><b>Ctrl + A:</b> Select all models</div>
+                <div><b>Escape:</b> Clear selection / dismiss</div>
+                <div><b>Ctrl + Z / Y:</b> Undo / Redo</div>
+            </div>
+        </div>
     </div>
     <div id="arcgisSceneWrap">
         <arcgis-scene id="gviewArcgisScene" basemap="satellite" ground="world-elevation">
@@ -1132,9 +1223,12 @@
         const redoBtn = document.getElementById("redoBtn");
         const toggleUiBtn = document.getElementById("toggleUiBtn");
         const viewerModeSelectEl = document.getElementById("viewerModeSelect");
+        const modePlyBtn = document.getElementById("modePlyBtn");
+        const mode3dBtn = document.getElementById("mode3dBtn");
         const importSourceInputEl = document.getElementById("importSourceInput");
         const tilesLoaderSectionEl = document.getElementById("tilesLoaderSection");
         const tilesetUrlInputEl = document.getElementById("tilesetUrlInput");
+        const browseTilesetFileBtn = document.getElementById("browseTilesetFileBtn");
         const tilesStatusTextEl = document.getElementById("tilesStatusText");
         const posXInput = document.getElementById("posXInput");
         const posYInput = document.getElementById("posYInput");
@@ -1362,14 +1456,29 @@
             if (!mesh) logMessage("No active model — geo anchor updated only.", "WARN");
         }
 
+        let lastSyncedCamState = null;
         function syncPlyBasemapCamera() {
             if (!plyBasemapEnabled || viewerMode !== "ply" || !window.GViewTiles) return;
+            const tx = camera.target.x;
+            const ty = camera.target.y;
+            const tz = camera.target.z;
+            const a = camera.alpha;
+            const b = camera.beta;
+            const r = camera.radius;
+            if (lastSyncedCamState) {
+                const da = Math.abs(a - lastSyncedCamState.a);
+                const db = Math.abs(b - lastSyncedCamState.b);
+                const dr = Math.abs(r - lastSyncedCamState.r);
+                const dt = Math.hypot(tx - lastSyncedCamState.tx, ty - lastSyncedCamState.ty, tz - lastSyncedCamState.tz);
+                if (da < 1e-4 && db < 1e-4 && dr < 1e-3 && dt < 1e-3) return;
+            }
+            lastSyncedCamState = { a, b, r, tx, ty, tz };
             window.GViewTiles.syncBackdropCamera({
-                target: { x: camera.target.x, y: camera.target.y, z: camera.target.z },
+                target: { x: tx, y: ty, z: tz },
                 localOrigin: { ...basemapLocalOrigin },
-                alpha: camera.alpha,
-                beta: camera.beta,
-                radius: camera.radius,
+                alpha: a,
+                beta: b,
+                radius: r,
                 anchor: { ...basemapGeoAnchor },
             });
         }
@@ -1423,9 +1532,10 @@
                 await tiles.ensureReady();
                 tiles.setActive(true);
                 await new Promise((resolve) => setTimeout(resolve, 120));
-                const elevationOffset = Number(tilesElevationInputEl?.value);
+                const elevationVal = parseFloat(tilesElevationInputEl?.value);
+                const elevationOffset = Number.isFinite(elevationVal) ? elevationVal : 0;
                 await tiles.loadTileset(normalizedUrl, {
-                    elevationOffset: Number.isFinite(elevationOffset) ? elevationOffset : 10,
+                    elevationOffset,
                 });
                 tiles.setActive(true);
                 setTilesStatus(tiles.getStatus ? tiles.getStatus() : "Tileset loaded.");
@@ -1444,12 +1554,15 @@
 
         async function clear3DTiles() {
             try {
+                if (window.gviewElectron?.stopTileServer) {
+                    await window.gviewElectron.stopTileServer();
+                }
                 if (!window.GViewTiles) {
                     setStatus("No 3D Tiles loaded.");
                     return;
                 }
                 await window.GViewTiles.clearTileset();
-                setStatus("3D Tiles cleared.");
+                setStatus("3D Tiles cleared & local server stopped.");
                 markDirty(true);
             } catch (err) {
                 setStatus("Failed to clear 3D Tiles. " + (err?.message || String(err)));
@@ -1466,11 +1579,18 @@
             const isPly = mode === "ply";
             const isTiles = mode === "3dtiles";
             viewerModeSelectEl.value = mode;
+            if (modePlyBtn && mode3dBtn) {
+                modePlyBtn.classList.toggle("active", isPly);
+                mode3dBtn.classList.toggle("active", isTiles);
+            }
             canvas.style.display = isPly ? "block" : "none";
             canvas.style.pointerEvents = isPly ? "auto" : "none";
             plyModeControlsEl.style.display = isPly ? "block" : "none";
             tilesLoaderSectionEl.style.display = isTiles ? "block" : "none";
             dropOverlayEl.style.display = "none";
+            dropOverlayEl.textContent = isTiles
+                ? "Drop tileset.json or 3D Tiles folder to load"
+                : "Drop .PLY files, tileset.json, or project to load";
             const helpPanelEl = document.getElementById("helpPanel");
             const viewCubeEl = document.getElementById("viewCube");
             const plyBasemapHintEl = document.getElementById("plyBasemapHint");
@@ -1558,8 +1678,8 @@
                 models: loadedModels.map((m) => ({
                     id: m.id,
                     name: m.name,
-                    dataUrl: m.dataUrl || null,
-                    urlOnly: !m.dataUrl,
+                    dataUrl: (m.dataUrl && m.dataUrl.length < 500000) ? m.dataUrl : null,
+                    urlOnly: !m.dataUrl || m.dataUrl.length >= 500000,
                     layer: m.layer || "Default",
                     locked: Boolean(m.locked),
                     enabled: m.mesh.isEnabled(),
@@ -1735,7 +1855,9 @@
 
         function setProjectionMode(mode) {
             projectionMode = mode === "ortho" ? "ortho" : "perspective";
-            projectionModeSelect.value = projectionMode;
+            if (projectionModeSelect) projectionModeSelect.value = projectionMode;
+            const orthoSec = document.getElementById("orthoControlsSection");
+            if (orthoSec) orthoSec.style.display = projectionMode === "ortho" ? "block" : "none";
             const pointers = camera.inputs?.attached?.pointers;
             if (projectionMode === "ortho") {
                 camera.mode = BABYLON.Camera.ORTHOGRAPHIC_CAMERA;
@@ -1813,10 +1935,23 @@
                 const nameBtn = document.createElement("button");
                 nameBtn.className = "modelNameBtn";
                 nameBtn.textContent = model.name + " [" + (model.layer || "Default") + "]";
+                nameBtn.title = "Click to select, double-click to rename";
                 nameBtn.addEventListener("click", () => {
                     setActiveModelById(model.id);
                     modelListEl.value = String(model.id);
                     layerNameInputEl.value = model.layer || "Default";
+                    updateSelectionStats();
+                });
+                nameBtn.addEventListener("dblclick", (e) => {
+                    e.stopPropagation();
+                    const newName = prompt("Rename model:", model.name);
+                    if (newName && newName.trim()) {
+                        model.name = newName.trim();
+                        refreshModelList();
+                        updateSplatInfoPanel();
+                        setStatus("Model renamed to: " + model.name);
+                        pushHistory("Rename model");
+                    }
                 });
                 row.addEventListener("dragstart", () => {
                     draggedModelId = model.id;
@@ -2730,7 +2865,7 @@
             URL.revokeObjectURL(a.href);
         }
 
-        function saveProjectNow() {
+        async function saveProjectNow() {
             if (loadedModels.length === 0) {
                 setStatus("No model loaded to save.");
                 return false;
@@ -2739,17 +2874,34 @@
             try {
                 const state = captureProjectState();
                 const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-                const fileName = "gview-" + stamp + ".pvproj";
-                const projectText = JSON.stringify(state);
-                downloadTextFile(fileName, projectText);
-                currentProjectName = fileName;
+                const defaultName = (currentProjectName && currentProjectName !== "Untitled")
+                    ? currentProjectName
+                    : "gview-" + stamp + ".pvproj";
+                const projectText = JSON.stringify(state, null, 2);
+                if (window.gviewElectron?.saveFileDialog) {
+                    const savedPath = await window.gviewElectron.saveFileDialog(
+                        { title: "Save GView Project", defaultPath: defaultName, filters: [{ name: "GView Project (*.pvproj)", extensions: ["pvproj", "json"] }] },
+                        projectText
+                    );
+                    if (savedPath) {
+                        currentProjectName = savedPath.split(/[\/\\]/).pop();
+                        markDirty(false);
+                        localStorage.removeItem(AUTOSAVE_KEY);
+                        setStatus("Project saved to: " + currentProjectName);
+                        return true;
+                    }
+                    setStatus("Save canceled.");
+                    return false;
+                }
+                downloadTextFile(defaultName, projectText);
+                currentProjectName = defaultName;
                 markDirty(false);
                 localStorage.removeItem(AUTOSAVE_KEY);
-                setStatus("Project saved.");
+                setStatus("Project saved: " + defaultName);
                 return true;
             } catch (err) {
                 logMessage("Project save failed: " + (err.message || String(err)), "ERROR");
-                setStatus("Project save failed.");
+                setStatus("Project save failed: " + (err.message || String(err)));
                 return false;
             } finally {
                 hideLoading();
@@ -2987,7 +3139,11 @@
             closeBypassGuard = true;
             isProjectDirty = false;
             updateProjectTitleAndStatusSuffix();
-            setTimeout(() => window.close(), 0);
+            if (window.gviewElectron?.closeApp) {
+                window.gviewElectron.closeApp();
+            } else {
+                setTimeout(() => window.close(), 0);
+            }
         }
 
         function fitCameraToMesh(mesh) {
@@ -3089,7 +3245,7 @@
             camera.radius = radius;
             camera.setTarget(target, false, false, true);
             setStatus("View set: " + direction);
-            pushHistory("View " + direction);
+            pushHistory("View " + direction, { markDirty: false });
         }
 
         function applySelectionScale(value) {
@@ -3442,6 +3598,8 @@
         viewerModeSelectEl.addEventListener("change", () => {
             switchViewerMode(viewerModeSelectEl.value);
         });
+        modePlyBtn?.addEventListener("click", () => switchViewerMode("ply"));
+        mode3dBtn?.addEventListener("click", () => switchViewerMode("3dtiles"));
         loadTilesBtn.addEventListener("click", async () => {
             await load3DTilesFromUrl((tilesetUrlInputEl.value || "").trim());
         });
@@ -3459,6 +3617,27 @@
                     return;
                 }
                 const url = await window.gviewElectron.startTileServer(folder);
+                tilesetUrlInputEl.value = url;
+                await load3DTilesFromUrl(url);
+            } catch (err) {
+                setStatus("Local tile server failed. " + (err?.message || String(err)));
+            } finally {
+                hideLoading();
+            }
+        });
+        browseTilesetFileBtn?.addEventListener("click", async () => {
+            if (!window.gviewElectron?.pickTilesetFile) {
+                setStatus("Select tileset.json is available in the GView desktop app.");
+                return;
+            }
+            try {
+                const filePath = await window.gviewElectron.pickTilesetFile();
+                if (!filePath) {
+                    setStatus("Tileset selection canceled.");
+                    return;
+                }
+                showLoading("Starting local tile server...");
+                const url = await window.gviewElectron.startTileServer(filePath);
                 tilesetUrlInputEl.value = url;
                 await load3DTilesFromUrl(url);
             } catch (err) {
@@ -3509,12 +3688,39 @@
             e.preventDefault();
             await load3DTilesFromUrl((tilesetUrlInputEl.value || "").trim());
         });
-        loadProjectBtn.addEventListener("click", () => projectInput.click());
+        loadProjectBtn.addEventListener("click", async () => {
+            if (window.gviewElectron?.openFileDialog) {
+                const paths = await window.gviewElectron.openFileDialog({
+                    title: "Open GView Project",
+                    multiple: false,
+                    filters: [{ name: "GView Project (*.pvproj, *.json)", extensions: ["pvproj", "json"] }],
+                });
+                if (paths && paths.length) {
+                    showLoading("Loading project...");
+                    try {
+                        const res = await fetch("file:///" + paths[0].replace(/\\/g, "/"));
+                        const text = await res.text();
+                        const project = JSON.parse(text);
+                        await applyProjectState(project);
+                        currentProjectName = paths[0].split(/[\/\\]/).pop();
+                        markDirty(false);
+                        setStatus("Project loaded: " + currentProjectName);
+                    } catch (err) {
+                        logMessage("Project load failed: " + (err.message || String(err)), "ERROR");
+                        setStatus("Project load failed: " + (err.message || String(err)));
+                    } finally {
+                        hideLoading();
+                    }
+                    return;
+                }
+            }
+            projectInput.click();
+        });
         saveProjectBtn.addEventListener("click", () => {
             saveProjectNow();
         });
-        closeSaveBtn.addEventListener("click", () => {
-            const ok = saveProjectNow();
+        closeSaveBtn.addEventListener("click", async () => {
+            const ok = await saveProjectNow();
             if (!ok) return;
             hideCloseModal();
             requestCloseBypass();
@@ -3527,6 +3733,20 @@
             hideCloseModal();
             setStatus("Close canceled.");
         });
+
+        const shortcutsBtn = document.getElementById("shortcutsBtn");
+        const shortcutsModal = document.getElementById("shortcutsModal");
+        const closeShortcutsBtn = document.getElementById("closeShortcutsBtn");
+        if (shortcutsBtn && shortcutsModal) {
+            shortcutsBtn.addEventListener("click", () => {
+                shortcutsModal.style.display = shortcutsModal.style.display === "flex" ? "none" : "flex";
+            });
+        }
+        if (closeShortcutsBtn && shortcutsModal) {
+            closeShortcutsBtn.addEventListener("click", () => {
+                shortcutsModal.style.display = "none";
+            });
+        }
         boxSelectBtn.addEventListener("click", () => {
             boxSelectEnabled = !boxSelectEnabled;
             if (boxSelectEnabled) {
@@ -3912,36 +4132,130 @@
         });
 
         window.addEventListener("dragenter", (e) => {
-            if (viewerMode !== "ply") return;
             const hasFiles = [...(e.dataTransfer?.types || [])].includes("Files");
             if (!hasFiles) return;
             e.preventDefault();
             dropOverlayEl.style.display = "flex";
         });
         window.addEventListener("dragover", (e) => {
-            if (viewerMode !== "ply") return;
             const hasFiles = [...(e.dataTransfer?.types || [])].includes("Files");
             if (!hasFiles) return;
             e.preventDefault();
             dropOverlayEl.style.display = "flex";
         });
         window.addEventListener("dragleave", (e) => {
-            if (viewerMode !== "ply") return;
-            const hasFiles = [...(e.dataTransfer?.types || [])].includes("Files");
-            if (!hasFiles) return;
             e.preventDefault();
             if (e.target === document.documentElement || e.target === document.body) {
                 dropOverlayEl.style.display = "none";
             }
         });
         window.addEventListener("drop", async (e) => {
-            if (viewerMode !== "ply") return;
             const hasFiles = [...(e.dataTransfer?.types || [])].includes("Files");
             if (!hasFiles) return;
             e.preventDefault();
             dropOverlayEl.style.display = "none";
             const files = [...(e.dataTransfer?.files || [])];
-            await loadFiles(files);
+            if (!files.length) return;
+
+            let tilesetTarget = null;
+            let projectFile = null;
+            let orthoFile = null;
+            const plyFiles = [];
+
+            for (const f of files) {
+                const fPath = window.gviewElectron?.getPathForFile ? window.gviewElectron.getPathForFile(f) : (f.path || "");
+                const fName = (f.name || "").toLowerCase();
+                const pathLower = (fPath || "").toLowerCase();
+
+                if (fName === "tileset.json" || pathLower.endsWith("tileset.json")) {
+                    tilesetTarget = fPath || f;
+                    break;
+                }
+                if (fName.endsWith(".pvproj")) {
+                    projectFile = f;
+                } else if (fName.endsWith(".ply")) {
+                    plyFiles.push(f);
+                } else if (/\.(png|jpe?g|webp|tiff?)$/i.test(fName)) {
+                    orthoFile = f;
+                }
+            }
+
+            // 1. If tileset.json was dropped
+            if (tilesetTarget && window.gviewElectron?.startTileServer) {
+                showLoading("Detected 3D Tileset. Starting server...");
+                try {
+                    const targetPath = typeof tilesetTarget === "string" ? tilesetTarget : (window.gviewElectron.getPathForFile(tilesetTarget) || tilesetTarget.name);
+                    const url = await window.gviewElectron.startTileServer(targetPath);
+                    tilesetUrlInputEl.value = url;
+                    switchViewerMode("3dtiles");
+                    await load3DTilesFromUrl(url);
+                } catch (err) {
+                    setStatus("Failed to load dropped tileset: " + (err.message || String(err)));
+                } finally {
+                    hideLoading();
+                }
+                return;
+            }
+
+            // 2. If project was dropped
+            if (projectFile) {
+                try {
+                    showLoading("Loading project...");
+                    const text = await projectFile.text();
+                    const project = JSON.parse(text);
+                    await applyProjectState(project);
+                    currentProjectName = projectFile.name;
+                    markDirty(false);
+                    setStatus("Project loaded: " + projectFile.name);
+                } catch (err) {
+                    setStatus("Failed to load project: " + (err.message || String(err)));
+                } finally {
+                    hideLoading();
+                }
+                return;
+            }
+
+            // 3. If PLY files dropped
+            if (plyFiles.length > 0) {
+                if (viewerMode !== "ply") {
+                    switchViewerMode("ply");
+                }
+                await loadFiles(plyFiles);
+                return;
+            }
+
+            // 4. If single item dropped in desktop app, check if it's a directory containing 3D tiles
+            if (files.length === 1 && window.gviewElectron?.startTileServer) {
+                const singlePath = window.gviewElectron.getPathForFile(files[0]);
+                if (singlePath) {
+                    try {
+                        showLoading("Checking dropped folder for 3D Tiles...");
+                        const url = await window.gviewElectron.startTileServer(singlePath);
+                        tilesetUrlInputEl.value = url;
+                        switchViewerMode("3dtiles");
+                        await load3DTilesFromUrl(url);
+                        return;
+                    } catch (_) {
+                        // Not a tiles folder, continue
+                    } finally {
+                        hideLoading();
+                    }
+                }
+            }
+
+            // 5. If ortho photo was dropped
+            if (orthoFile) {
+                try {
+                    const blobUrl = URL.createObjectURL(orthoFile);
+                    setOrthoPhotoOverlay(blobUrl);
+                    setStatus("Ortho photo loaded: " + orthoFile.name);
+                } catch (err) {
+                    setStatus("Failed to load ortho photo: " + (err.message || String(err)));
+                }
+                return;
+            }
+
+            setStatus("Dropped files not recognized as .ply, tileset.json, or project.");
         });
         canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
@@ -4140,6 +4454,19 @@
         canvas.addEventListener("dblclick", () => {
             if (viewerMode !== "ply") return;
             if (!currentSplatMesh) return;
+            // 1. Try to pick geometry directly on loaded models
+            const directPick = scene.pick(scene.pointerX, scene.pointerY, (m) => m !== proxyPlane && m.isVisible && m.isEnabled());
+            if (directPick?.hit && directPick.pickedPoint) {
+                targetGlide = {
+                    from: camera.getTarget().clone(),
+                    to: directPick.pickedPoint.clone(),
+                    elapsed: 0,
+                    duration: 0.35,
+                };
+                setStatus("Orbit pivot centered on model surface.");
+                return;
+            }
+            // 2. Fall back to depth plane
             proxyPlane.position.copyFrom(camera.target);
             proxyPlane.lookAt(camera.position);
             const pickInfo = scene.pick(scene.pointerX, scene.pointerY, (m) => m === proxyPlane);
@@ -4157,6 +4484,25 @@
         const keysDown = new Set();
 
         window.addEventListener("keydown", (e) => {
+            const target = e.target;
+            const isTextInput = target && (
+                target.tagName === "INPUT" ||
+                target.tagName === "TEXTAREA" ||
+                target.tagName === "SELECT" ||
+                target.isContentEditable
+            );
+            if (isTextInput) {
+                if (e.key === "Escape") target.blur();
+                return;
+            }
+
+            if (e.key === "F1") {
+                e.preventDefault();
+                const modal = document.getElementById("shortcutsModal");
+                if (modal) modal.style.display = modal.style.display === "flex" ? "none" : "flex";
+                return;
+            }
+
             const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
             keysDown.add(k);
             if ("wasdqerftg+-jluoik".includes(k)) e.preventDefault();
@@ -4170,6 +4516,8 @@
             }
             if (k === "Escape") {
                 clearSelection();
+                const sm = document.getElementById("shortcutsModal");
+                if (sm) sm.style.display = "none";
             }
             if (viewerMode === "ply" && projectionMode === "ortho") {
                 if (e.shiftKey && k === "w") {
@@ -4205,6 +4553,15 @@
             }
         });
         window.addEventListener("keyup", (e) => {
+            const target = e.target;
+            const isTextInput = target && (
+                target.tagName === "INPUT" ||
+                target.tagName === "TEXTAREA" ||
+                target.tagName === "SELECT" ||
+                target.isContentEditable
+            );
+            if (isTextInput) return;
+
             const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
             keysDown.delete(k);
             if (transformActionActive && ("qerftgjluoik+-=".includes(k))) {
@@ -4361,7 +4718,7 @@
         let GaussianSplatLayer;
         let Camera;
         let Point;
-        let projectionEngine;
+        let projectOperator;
         let viewElement;
         let splatLayer = null;
         let ready = false;
@@ -4551,12 +4908,18 @@
         }
 
         async function ensureProjection() {
-            if (projectionEngine) return;
-            [Point, projectionEngine] = await $arcgis.import([
-                "@arcgis/core/geometry/Point.js",
-                "@arcgis/core/geometry/projection.js",
-            ]);
-            await projectionEngine.load();
+            if (projectOperator) return;
+            try {
+                [Point, projectOperator] = await $arcgis.import([
+                    "@arcgis/core/geometry/Point.js",
+                    "@arcgis/core/geometry/operators/projectOperator.js",
+                ]);
+                if (projectOperator && typeof projectOperator.isLoaded === "function" && !projectOperator.isLoaded()) {
+                    await projectOperator.load();
+                }
+            } catch (err) {
+                tilesLog("Projection engine warning: " + (err?.message || String(err)), "WARN");
+            }
         }
 
         async function extentToGeoAnchor(extent) {
@@ -4566,13 +4929,22 @@
             const cy = (extent.ymin + extent.ymax) / 2;
             const cz = ((extent.zmin ?? 0) + (extent.zmax ?? 0)) / 2;
             const sr = extent.spatialReference || { wkid: 4326 };
+            if (!Point) return null;
             const pt = new Point({ x: cx, y: cy, z: cz, spatialReference: sr });
             let projected = pt;
             const wkid = sr.wkid || sr.latestWkid;
-            if (wkid !== 3857 && wkid !== 102100) {
-                projected = projectionEngine.project(pt, webMercatorSr);
+            if (wkid !== 3857 && wkid !== 102100 && projectOperator) {
+                try {
+                    if (typeof projectOperator.execute === "function") {
+                        projected = projectOperator.execute(pt, webMercatorSr);
+                    } else if (typeof projectOperator.project === "function") {
+                        projected = projectOperator.project(pt, webMercatorSr);
+                    }
+                } catch (e) {
+                    tilesLog("Project point warning: " + e.message, "WARN");
+                }
             }
-            if (!projected) return null;
+            if (!projected) projected = pt;
             return {
                 x: projected.x,
                 y: projected.y,
@@ -4738,54 +5110,51 @@
             const zmin = extent.zmin ?? 0;
             const zmax = extent.zmax ?? 0;
             const cz = (zmin + zmax) / 2;
-            const size = Math.max(extent.width, extent.height, (zmax - zmin), 40);
+            const size = Math.max(extent.width || 0, extent.height || 0, (zmax - zmin), 40);
             const sr = extent.spatialReference;
             overviewCamera = new Camera({
-                position: { x: cx, y: cy - size * 1.5, z: cz + size * 2.8, spatialReference: sr },
-                heading: 50,
-                tilt: 10,
+                position: { x: cx, y: cy - size * 0.9, z: cz + size * 1.4, spatialReference: sr },
+                heading: 10,
+                tilt: 45,
             });
             closeupCamera = new Camera({
-                position: { x: cx, y: cy - size * 0.35, z: cz + size * 1.1, spatialReference: sr },
-                heading: 50,
-                tilt: 10,
+                position: { x: cx, y: cy - size * 0.35, z: cz + size * 0.55, spatialReference: sr },
+                heading: 10,
+                tilt: 55,
             });
         }
 
         async function frameToLayer() {
-            for (let attempt = 0; attempt < 8; attempt++) {
+            if (!viewElement) return false;
+            for (let attempt = 0; attempt < 10; attempt++) {
                 if (splatLayer?.fullExtent) {
                     buildCamerasFromExtent(splatLayer.fullExtent);
-                }
-                if (overviewCamera) {
-                    viewElement.camera = overviewCamera;
-                    scheduleResize();
-                    tilesLog("Camera set to overview.");
-                    return true;
-                }
-                try {
-                    if (splatLayer?.fullExtent) {
-                        await viewElement.goTo(splatLayer.fullExtent.expand(1.3), { duration: 0 });
-                        buildCamerasFromExtent(splatLayer.fullExtent);
+                    try {
+                        await viewElement.goTo(splatLayer.fullExtent.expand(1.25), { duration: 800 });
                         scheduleResize();
                         tilesLog("Framed with layer fullExtent.");
                         return true;
+                    } catch (e) {
+                        tilesLog("Frame extent attempt " + attempt + ": " + (e?.message || String(e)), "WARN");
                     }
-                } catch (_) {}
+                }
+                if (splatLayer) {
+                    try {
+                        await viewElement.goTo({ target: splatLayer, tilt: 48, heading: 15 }, { duration: 800 });
+                        scheduleResize();
+                        tilesLog("Framed with goTo(target=layer).");
+                        return true;
+                    } catch (e) {
+                        tilesLog("Frame target attempt " + attempt + ": " + (e?.message || String(e)), "WARN");
+                    }
+                }
+                await new Promise((resolve) => setTimeout(resolve, 300));
                 try {
-                    await viewElement.goTo({ target: splatLayer, tilt: 65, heading: 50 }, { duration: 0 });
-                    if (splatLayer?.fullExtent) buildCamerasFromExtent(splatLayer.fullExtent);
-                    scheduleResize();
-                    tilesLog("Framed with goTo(target=layer).");
-                    return true;
-                } catch (_) {}
-                await new Promise((resolve) => setTimeout(resolve, 400));
-                try {
-                    await splatLayer.load();
+                    await splatLayer?.load();
                 } catch (_) {}
             }
             scheduleResize();
-            tilesLog("Could not auto-frame. Try Zoom To Layer or Overview.", "WARN");
+            tilesLog("Could not auto-frame yet. Splats are rendering.", "INFO");
             return false;
         }
 
@@ -4798,29 +5167,29 @@
                 overviewCamera = null;
                 closeupCamera = null;
             }
+            const offsetVal = parseFloat(opts.elevationOffset);
             splatLayer = new GaussianSplatLayer({
                 url,
                 elevationInfo: {
                     mode: "absolute-height",
-                    offset: Number(opts.elevationOffset) || 10,
+                    offset: Number.isFinite(offsetVal) ? offsetVal : 0,
                 },
             });
-            // Match working demo: add layer first, frame immediately, load in background.
             viewElement.map.add(splatLayer);
             scheduleResize();
             tilesLog("GaussianSplatLayer added, loading tiles...");
-            frameToLayer();
             try {
                 await splatLayer.load();
+                tilesLog("Tileset loaded successfully.");
             } catch (err) {
                 tilesLog("Layer load warning: " + (err?.message || String(err)), "WARN");
             }
             if (viewElement.view) {
                 try {
                     await viewElement.view.whenLayerView(splatLayer);
-                    tilesLog("Layer view created.");
+                    tilesLog("Layer view ready.");
                 } catch (err) {
-                    tilesLog("Layer view wait: " + (err?.message || String(err)), "WARN");
+                    tilesLog("Layer view: " + (err?.message || String(err)), "WARN");
                 }
             }
             await frameToLayer();
@@ -4859,29 +5228,47 @@
 
         async function zoomToLayer() {
             if (!splatLayer) throw new Error("No tileset loaded.");
-            try {
-                await splatLayer.load();
-            } catch (_) {}
-            await frameToLayer();
+            try { await splatLayer.load(); } catch (_) {}
+            if (splatLayer.fullExtent) {
+                await viewElement.goTo(splatLayer.fullExtent.expand(1.15), { duration: 600 });
+                tilesLog("Zoomed to layer bounds.");
+                return;
+            }
+            await viewElement.goTo({ target: splatLayer }, { duration: 600 });
+            tilesLog("Zoomed to layer.");
         }
 
         async function goToOverview() {
             if (!splatLayer) throw new Error("No tileset loaded.");
-            if (!overviewCamera) {
-                await zoomToLayer();
+            try { await splatLayer.load(); } catch (_) {}
+            if (splatLayer.fullExtent) {
+                await viewElement.goTo(splatLayer.fullExtent.expand(1.8), { duration: 800 });
+                tilesLog("Overview view.");
+                return;
             }
-            if (!overviewCamera) throw new Error("Overview camera not available yet.");
-            await viewElement.goTo(overviewCamera, { duration: 800 });
+            if (overviewCamera) {
+                await viewElement.goTo(overviewCamera, { duration: 800 });
+                tilesLog("Overview view.");
+                return;
+            }
+            await viewElement.goTo({ target: splatLayer, tilt: 35 }, { duration: 800 });
             tilesLog("Overview view.");
         }
 
         async function goToCloseup() {
             if (!splatLayer) throw new Error("No tileset loaded.");
-            if (!closeupCamera) {
-                await zoomToLayer();
+            try { await splatLayer.load(); } catch (_) {}
+            if (splatLayer.fullExtent) {
+                await viewElement.goTo(splatLayer.fullExtent.expand(0.85), { duration: 800 });
+                tilesLog("Close-up view.");
+                return;
             }
-            if (!closeupCamera) throw new Error("Close-up camera not available yet.");
-            await viewElement.goTo(closeupCamera, { duration: 800 });
+            if (closeupCamera) {
+                await viewElement.goTo(closeupCamera, { duration: 800 });
+                tilesLog("Close-up view.");
+                return;
+            }
+            await viewElement.goTo({ target: splatLayer, tilt: 65 }, { duration: 800 });
             tilesLog("Close-up view.");
         }
 

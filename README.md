@@ -4,11 +4,16 @@ Desktop viewer for PLY / Gaussian Splat models and ArcGIS 3D Tiles Gaussian Spla
 
 ## Features
 
-- PLY and Gaussian Splat viewing (Babylon.js)
-- 3D Tiles Gaussian Splat (ArcGIS Maps SDK)
-- Satellite basemap with model alignment
-- Distance and angle measurement tools
-- Multi-model projects with camera, transform, and scene controls
+- **PLY & Gaussian Splat viewing** powered by Babylon.js
+- **ArcGIS 3D Tiles Gaussian Splat layers** with auto-framing and overview
+- **Satellite Basemap alignment** matching model origin to geographic coordinates
+- **Perspective & Orthographic projection modes** with 1:1 view and custom ortho zoom
+- **Ortho Photo & GeoTIFF raster overlay** with opacity blending and fit controls
+- **Interactive 3D distance and 3-point angle measurement tools**
+- **Model hierarchy & multi-selection tools** (box select, brush select, refine, isolate, hide, lock, layer assignments, and double-click rename)
+- **Built-in HTTP 3D Tiles Server** with CORS, HTTP 206 Range streaming, and auto-discovery
+- **Native Windows file dialogs** for saving and opening projects (`.pvproj`)
+- **Keyboard shortcuts cheat sheet** (press `F1` or click `?` in header)
 
 ## Requirements
 
@@ -42,12 +47,16 @@ Use this if you want a normal Windows app with a Start Menu shortcut.
 3. **Install dependencies**
    ```bash
    npm install
+   # or on Windows PowerShell if execution policies block .ps1 scripts:
+   npm.cmd install
    ```
    Wait until it finishes (this downloads Electron and build tools).
 
 4. **Build the Windows installer**
    ```bash
    npm run build
+   # or on Windows PowerShell:
+   npm.cmd run build
    ```
    - Close any running **GView** or **Electron** windows first, or the build may fail with a file-lock error.
    - When it completes, the installer is created in the `dist` folder.
@@ -78,11 +87,13 @@ Use this for quick testing or development.
 3. **Install dependencies**
    ```bash
    npm install
+   # or: npm.cmd install
    ```
 
 4. **Start the app**
    ```bash
    npm start
+   # or: npm.cmd start
    ```
 
 GView opens in an Electron window. No installer is created.
@@ -91,26 +102,29 @@ GView opens in an Electron window. No installer is created.
 
 ## First Steps After Install
 
-### Open a PLY / Gaussian Splat model
+### Option 1 — Open a 3D Tileset (e.g. `GS Result\3d_tiles`)
 
-1. Launch **GView**
-2. Go to the **Models** tab
-3. Click **Load PLY** (or drag and drop a `.ply` file)
-4. Use the mouse to orbit, pan, and zoom the scene
+1. Launch **GView**.
+2. Click the **3D Tiles (GIS)** button at the top of the controls panel.
+3. Choose either:
+   - **Drag & Drop**: Drag `tileset.json` or the `3d_tiles` folder directly into the window.
+   - **Select tileset.json**: Click the **Select tileset.json** button and pick the file.
+   - **Browse Folder**: Click **Browse Folder** and select `GS Result` or `GS Result\3d_tiles`.
+4. GView automatically starts the local CORS-enabled tile server and streams the Gaussian Splat tileset over the real-world satellite terrain.
+5. Use **Overview**, **Close-up**, or **Zoom To Layer** to navigate.
 
-### Open a 3D Tiles Gaussian Splat tileset
+### Option 2 — Open a PLY Splat (e.g. `GS Result\ply\Gaussian_Splats-L0.ply`)
 
-1. Go to the **Scene** tab
-2. Under **3D Tiles**, click **Browse Folder**
-3. Select the folder that contains `tileset.json`
-4. GView starts a local CORS-enabled server and loads the tileset automatically
-5. Use **Overview**, **Close-up**, or **Zoom** to frame the data
+1. Launch **GView**.
+2. Click **PLY Splats** at the top of the controls panel.
+3. Either drag & drop any `.ply` file into the window, or enter the path / click **Import**.
+4. Use the mouse to orbit (Left Drag), pan (Right Drag), and zoom (Wheel).
 
-### Optional: satellite basemap (PLY mode)
+### Optional: Satellite Basemap in PLY mode
 
-1. Load a PLY model first
-2. In the **Scene** tab, enable **Satellite Basemap**
-3. Click **Align to Model** to line up the map with your model
+1. Load a PLY model.
+2. In the **Scene** tab, enable **Satellite Basemap**.
+3. Click **Align to Model** to align the satellite map with your model origin.
 
 ### Measure distances and angles
 

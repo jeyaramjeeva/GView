@@ -25,15 +25,17 @@
     "files": [
       "main.js",
       "preload.js",
-      "PlyViewer.html"
+      "PlyViewer.html",
+      "assets/**/*"
     ],
     "directories": {
       "buildResources": "build"
     },
     "win": {
-      "icon": "C:/Users/Jjeyara/Downloads/LogoNew.png",
+      "icon": "build/icon.ico",
       "target": [
-        "nsis"
+        "nsis",
+        "portable"
       ]
     },
     "nsis": {
